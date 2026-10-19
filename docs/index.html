@@ -8,6 +8,7 @@
   <script src="vendor/aframe.min.js"></script>
   <script src="js/config.js"></script><script src="js/core.js"></script>
   <script src="js/collision.js"></script><script src="js/world.js"></script>
+  <script src="js/animation.js"></script><script src="js/navigation.js"></script>
   <script src="js/nature.js"></script><script src="js/player.js"></script><script src="js/birds.js"></script>
 </head>
 <body>
@@ -24,11 +25,18 @@
       <nav class="hud-actions" aria-label="游戏菜单">
         <button id="manual-button" class="hud-button" title="观鸟手册 H"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5C8 2 4 3 2 4v15c4-2 7-1 10 1 3-2 6-3 10-1V4c-2-1-6-2-10 1Zm0 0v15"/></svg><span>手册</span><kbd>H</kbd></button>
         <button id="album-button" class="hud-button" title="相册 P"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 16 6-6 6 7 3-3 3 3"/><circle cx="16" cy="8" r="1.3"/></svg><span>相册</span><b id="photo-count">0</b></button>
-        <button id="fullscreen-button" class="hud-button icon-button" title="全屏 F" aria-label="进入全屏" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button>
+        <button id="clear-ui-button" class="hud-button" title="清屏 / 恢复界面 · U（清屏后按 U 恢复）" aria-label="清屏，按 U 恢复界面" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg><span>清屏</span><kbd>U</kbd></button><button id="fullscreen-button" class="hud-button icon-button" title="全屏 F" aria-label="进入全屏" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button>
       </nav>
     </header>
+    <div id="mode-status" class="mode-badge"></div><div id="final-prompt" hidden>已到达大树 · 按 <kbd>G</kbd> 确认 <span id="final-prompt-name"></span></div>
+    <div id="hotbar" role="group" aria-label="快捷物品栏">
+      <button data-slot="0" class="slot selected" aria-pressed="true"><kbd>1</kbd><svg viewBox="0 0 36 36"><path d="M5 12h7l3-4h7l3 4h6v19H5Z"/><circle cx="18" cy="21" r="6"/></svg><span>相机</span></button>
+      <button data-slot="1" class="slot" aria-pressed="false"><kbd>2</kbd><svg viewBox="0 0 36 36" class="berry-icon"><path d="m18 13 3-8 7 3-8 6"/><circle cx="12" cy="22" r="7"/><circle cx="24" cy="22" r="7"/><circle cx="18" cy="15" r="7"/></svg><span>浆果 <b id="berry-count">6</b></span></button>
+      <button data-slot="2" class="slot" aria-pressed="false"><kbd>3</kbd><i>—</i><span>空手</span></button>
+      <button data-slot="3" class="slot" aria-pressed="false"><kbd>4</kbd><i>—</i><span>空手</span></button>
+    </div><div id="interaction-hint"></div>
     <div id="crosshair" aria-hidden="true"></div>
-    <div class="hud-bottom"><span id="movement-label">轻步行走</span><span class="quiet-hint">H 手册 · C 相机 · F 全屏</span></div>
+    <div class="hud-bottom"><span id="movement-label">轻步行走</span><span class="quiet-hint">1–4 物品 · H 手册 · U 清屏 · F 全屏</span></div>
     <div id="welcome-hint" class="hint-card" hidden><span class="hint-leaf">✦</span><div><strong>出发前，翻开观鸟手册</strong><p>按 <kbd>H</kbd> 了解行走、拍照与鸟类记录。</p></div></div>
   </div>
 
@@ -39,13 +47,13 @@
     <div id="focus-readout">寻找鸟类身影</div>
     <div class="camera-bottom">滚轮 变焦 · 左键 / E 拍照 · C 收起</div>
   </div>
-  <div id="shutter-flash" aria-hidden="true"></div>
+  <div id="environment-veil" aria-hidden="true"></div><div id="shutter-flash" aria-hidden="true"></div>
   <div id="toast" role="status" aria-live="polite" hidden></div>
 
   <section id="start-screen" class="screen-overlay start-screen">
-    <div class="start-card"><div class="eyebrow">WETLAND FIELD NOTES · 01</div><div class="start-rule"></div><h1>啾，<br>在那里！<span>一段放轻脚步的观鸟时光</span></h1><p>沿着小径走进树林。<br>停一停，看看身边的邻居。</p><button id="start-button" class="primary" disabled>正在准备湿地…</button><div id="loading-status" role="status">正在加载场景</div><small>电脑键鼠体验 · 建议戴上耳机</small></div>
+    <div class="start-card"><div class="eyebrow">WETLAND FIELD NOTES · 01</div><div class="start-rule"></div><h1>啾，<br>在那里！<span>一段放轻脚步的观鸟时光</span></h1><p>沿着小径走进树林。<br>停一停，看看身边的邻居。</p><div class="mode-picker" aria-label="选择游玩模式"><button data-mode="observe" class="selected" aria-pressed="true"><b>观察模式</b><small>六只鸟 · 自由探索</small></button><button data-mode="story" aria-pressed="false"><b>故事模式</b><small>你的行动 · 写下结局</small></button></div><button id="start-button" class="primary" disabled>正在准备湿地…</button><div id="loading-status" role="status">正在加载场景</div><small>电脑键鼠体验 · 建议戴上耳机</small></div>
   </section>
-  <section id="pause-screen" class="screen-overlay" hidden><div class="pause-card"><div class="eyebrow">TAKE A BREATH</div><h2>在这里，停一会儿</h2><p>鼠标已释放，世界正在等你。</p><button id="resume-button" class="primary">继续观察</button><button id="pause-manual" class="secondary">打开观鸟手册 · H</button></div></section>
+  <section id="pause-screen" class="screen-overlay" hidden><div class="pause-card"><div class="eyebrow">TAKE A BREATH</div><h2>在这里，停一会儿</h2><p>鼠标已释放，世界正在等你。</p><button id="resume-button" class="primary">继续观察</button><button id="pause-manual" class="secondary">打开观鸟手册 · H</button><button id="pause-clear-ui" class="secondary" aria-pressed="false">清屏 · U</button></div></section>
 
   <div id="manual-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="manual-title">
     <div class="book-shell">
@@ -53,18 +61,47 @@
       <div class="book"><button id="close-manual" class="book-close" aria-label="关闭手册">×</button>
         <aside class="book-left"><div class="eyebrow">CHIRP / FIELD GUIDE</div><div class="book-emblem"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M30 73c-9-17 4-35 21-34 4-16 18-20 28-12l9 10 16 6-17 5c-3 25-15 37-38 34L30 96l4-18-19 3 15-8Z"/><path d="M50 53c-3 11 4 19 18 17M55 83l-2 14m12-15 2 15"/><circle cx="77" cy="36" r="2"/></svg></div><h2 id="manual-title">野外观鸟手册</h2><p class="book-subtitle">让每一次靠近，<br>都保留一点距离。</p><div class="book-progress"><span>已经记录</span><strong><span id="unlock-count">0</span><i> / 3</i></strong><div class="progress-line"><i id="unlock-progress"></i></div></div><small>湿地观察站<br>FIELD EDITION · 小组 3</small></aside>
         <main class="book-right">
-          <section id="tab-controls" class="book-page"><div class="page-number">01 / 出发指南</div><h3>先学会，放轻脚步。</h3><p class="page-intro">顺着小路自由探索。鸟类会留意你的动静，安静靠近会让观察更从容。</p><div class="key-grid"><div><kbd>W A S D</kbd><span>前后左右移动</span></div><div><kbd>鼠标</kbd><span>转动视角</span></div><div><kbd>Shift</kbd><span>按住冲刺</span></div><div><kbd>Ctrl</kbd><span>按住下蹲潜伏</span></div><div><kbd>Space</kbd><span>跳跃</span></div><div><kbd>R</kbd><span>回到入口</span></div><div><kbd>H</kbd><span>打开 / 合上手册</span></div><div><kbd>F</kbd><span>进入 / 退出全屏</span></div><div><kbd>Esc</kbd><span>关闭窗口 / 释放鼠标</span></div></div><div class="field-note"><b>观察小贴士</b><p>靠近鸟类时按住 Ctrl。潜伏不会增加警觉值；近距离冲刺会惊动它们。看到「!」时，先停下脚步。</p></div></section>
-          <section id="tab-camera" class="book-page" hidden><div class="page-number">02 / 镜头笔记</div><h3>把相遇，留在照片里。</h3><p class="page-intro">先找一个合适的位置，再举起相机。变焦能帮助你保持距离。</p><ol class="camera-steps"><li><kbd>C</kbd><div><b>举起相机</b><p>出现取景框；再次按 C 收起。</p></div></li><li><kbd>滚轮</kbd><div><b>调整画面大小</b><p>向上放大、向下缩小。左下角实时显示 1.0×～4.0×。</p></div></li><li><kbd>左键 / E</kbd><div><b>按下快门</b><p>鸟类进入画面且没有被树石挡住时，可留下观察记录。</p></div></li><li><kbd>P</kbd><div><b>翻开相册</b><p>点击照片查看大图，并保存到电脑。取景框不会进入照片。</p></div></li></ol><div class="field-note"><b>记录属于你</b><p>照片保存在当前浏览器的本地相册，清理浏览器数据会清空。喜欢的照片请及时下载。</p></div></section>
-          <section id="tab-birds" class="book-page" hidden><div class="page-number">03 / 鸟类清单</div><h3>今天，遇见了谁？</h3><p class="page-intro">拍到鸟类即可解锁记录。占位球沿用同一套观察与拍照逻辑，之后会替换为正式鸟类模型。</p><div id="bird-checklist" class="bird-checklist"></div><div class="field-note"><b>安静等待，也是一种回应</b><p>受惊的鸟会离开；这次测试中，等待一会儿会再次出现。手册里的记录会保留。</p></div></section>
-          <section id="tab-settings" class="book-page" hidden><div class="page-number">04 / 声音与设置</div><h3>听见，林间的层次。</h3><div id="volume-settings" class="volume-settings"></div><label class="setting-toggle"><input id="wind-toggle" type="checkbox" checked> 植物随风轻摆</label><label class="setting-toggle"><input id="shadow-toggle" type="checkbox" checked> 柔和阴影</label><button id="reset-volume" class="paper-button">恢复音量设置</button><details class="credits"><summary>素材鸣谢</summary><p>“The Forest and the Trees” — Kevin MacLeod (incompetech.com)<br>Licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · 已进行音频格式转换。</p><p>环境与快门：o_ciz、laughatlantic、roachpowder / Freesound，CC0。脚步：Kenney Impact Sounds，CC0。完整来源见项目 CREDITS.md。</p></details></section>
+          <section id="tab-controls" class="book-page"><div class="page-number">01 / 出发指南</div><h3>先学会，放轻脚步。</h3><p class="page-intro">顺着小路自由探索。鸟类会留意你的动静，安静靠近会让观察更从容。</p><div class="key-grid"><div><kbd>W A S D</kbd><span>前后左右移动</span></div><div><kbd>鼠标</kbd><span>转动视角</span></div><div><kbd>Shift</kbd><span>按住冲刺</span></div><div><kbd>Ctrl / X</kbd><span>轻按切换下蹲 / 站立</span></div><div><kbd>Space</kbd><span>跳跃</span></div><div><kbd>R</kbd><span>回入口（保留本轮进度）</span></div><div><kbd>H</kbd><span>打开 / 合上手册</span></div><div><kbd>F</kbd><span>进入 / 退出全屏</span></div><div><kbd>U</kbd><span>清屏 / 恢复全部界面</span></div><div><kbd>Esc</kbd><span>关闭窗口 / 释放鼠标</span></div></div><div class="field-note"><b>四格物品栏与浆果</b><p>1–4 切换物品；1 固定相机，按 C 举起 / 收起。准星对准近处浆果，左键拾取。选中 2，低头对准空地左键放下一份。蹲下后按 E 伸手，静止 3 秒；移动、跳跃或切换物品会取消。夜鹭和珠颈斑鸠会在安全且可达时靠近；红耳鹎在枝头回应。相机举起时左键只拍照。食物为游戏互动道具。</p></div><div class="field-note"><b>观察小贴士</b><p>靠近鸟类时轻按 Ctrl 或 X，松开后再移动。潜伏不会增加警觉值；近距离冲刺会惊动它们。看到「!」时，先停下脚步。</p></div></section>
+          <section id="tab-camera" class="book-page" hidden><div class="page-number">02 / 镜头笔记</div><h3>把相遇，留在照片里。</h3><p class="page-intro">先找一个合适的位置，再举起相机。变焦能帮助你保持距离。</p><ol class="camera-steps"><li><kbd>C</kbd><div><b>举起相机</b><p>出现取景框；再次按 C 收起。</p></div></li><li><kbd>滚轮</kbd><div><b>调整画面大小</b><p>向上放大、向下缩小。左下角实时显示 1.0×～4.0×。</p></div></li><li><kbd>左键 / E</kbd><div><b>按下快门</b><p>鸟类进入画面且没有被树石挡住时，可留下观察记录。</p></div></li><li><kbd>P</kbd><div><b>翻开相册</b><p>点击照片查看大图、保存或删除。勾选照片后可批量删除、打包保存；也可全选。按 U 清屏 / 恢复界面，清屏时仍可拍照。</p></div></li></ol><div class="field-note"><b>记录属于你</b><p>照片保存在当前浏览器的本地相册，清理浏览器数据会清空。喜欢的照片请及时下载。</p></div></section>
+          <section id="tab-birds" class="book-page" hidden><div class="page-number">03 / 鸟类清单</div><h3>今天，遇见了谁？</h3><p class="page-intro">拍到鸟类即可解锁永久记录。故事模式另外记录本轮观察，终点的鸟不计入本轮任务。</p><div id="bird-checklist" class="bird-checklist"></div><div class="field-note"><b>安静等待，也是一种回应</b><p>受惊的鸟会暂时躲开；离开它附近，约 35 秒后会回来。手册里的记录会保留。</p></div></section>
+          <section id="tab-settings" class="book-page" hidden><div class="page-number">04 / 声音与设置</div><h3>选择你的观鸟时光。</h3><div class="mode-picker book-modes"><button data-mode="observe"><b>观察模式</b><small>无结局 · 终点三只鸟常驻</small></button><button data-mode="story"><b>故事模式</b><small>观察与互动 · 决定本轮结局</small></button></div><p id="round-status" class="round-status"></p><p id="story-task" class="page-intro"></p><div class="round-actions"><button id="book-ending" class="paper-button">确认 / 查看结局</button><button id="restart-round" class="paper-button">重新开始本模式</button></div><p class="setting-note">切换模式或重新开始会重置本轮位置、鸟类状态、浆果和计数；照片、图鉴、结局收藏与音量保留。故事从常态开始，观察模式保留已解锁的场景偏好。</p><div class="ending-collection">
+  <h4>故事收藏 <span id="ending-collection-count">0 / 3</span></h4>
+  <ul class="ending-stamps"><li data-ending-stamp="dusk"></li><li data-ending-stamp="bad"></li><li data-ending-stamp="dream"></li></ul>
+  <details class="story-rules"><summary>三页尾声，如何抵达？</summary><p>结局 1：观察完三只鸟，零惊扰，成功投喂不足两次。<br>结局 2：惊扰达到两次，无需补完观察。<br>结局 3：观察完三只鸟，零惊扰，成功投喂至少两次。<br>惊扰一次归入结局 1，仍需完成观察。惊扰指真正吓跑一次，投喂指鸟实际吃到一份；同一只鸟可重复计数。所有结局都在大树下按 G 确认。</p></details>
+  <p class="setting-note">结局收藏保存在当前浏览器、当前网站。重玩保留；清除网站数据会重置。</p>
+  <h4>观察模式 · 场景</h4>
+  <p id="observation-scene-help" class="setting-note"></p>
+  <div class="observation-scenes" role="group" aria-label="观察模式场景" aria-describedby="observation-scene-help">
+    <button data-observation-scene="normal" disabled>常态日光</button><button data-observation-scene="dusk" disabled>黄昏暖光</button><button data-observation-scene="bad" disabled>黑白林地</button><button data-observation-scene="dream" disabled>梦幻微光</button>
+  </div>
+</div><h4>林间声音</h4><div id="volume-settings" class="volume-settings"></div><label class="setting-toggle"><input id="wind-toggle" type="checkbox" checked> 植物随风轻摆</label><label class="setting-toggle"><input id="shadow-toggle" type="checkbox" checked> 柔和阴影</label><button id="reset-volume" class="paper-button">恢复音量设置</button><details class="credits"><summary>素材鸣谢</summary><p>“The Forest and the Trees” — Kevin MacLeod (incompetech.com)<br>Licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · 已进行音频格式转换。</p><p>环境与快门：o_ciz、laughatlantic、roachpowder / Freesound，CC0。脚步：Kenney Impact Sounds，CC0。完整来源见项目 CREDITS.md。</p></details></section>
         </main>
         <footer class="book-footer"><span>保持距离，静静观察。</span><button id="manual-resume">合上手册，继续观察 →</button></footer>
       </div>
     </div>
   </div>
 
-  <div id="album-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="album-title"><section class="album-sheet"><header><div><div class="eyebrow">COLLECTED MOMENTS</div><h2 id="album-title">湿地相册 <span id="album-count">0</span></h2></div><button id="close-album" class="paper-button">关闭 · P</button></header><p id="album-empty">还没有照片。按 C 举起相机，记录第一次相遇。</p><div id="album-grid"></div><div id="photo-detail" hidden><button id="detail-back" class="paper-button">← 返回相册</button><img id="detail-image" alt="选中的观鸟照片"><div class="detail-actions"><span id="detail-caption"></span><a id="download-photo" class="primary" download>保存到电脑</a><button id="delete-photo" class="paper-button">删除照片</button></div></div><footer>照片保存在这台设备的当前浏览器中 · 最多 60 张</footer></section></div>
+  <div id="album-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="album-title">
+    <section class="album-sheet"><header><div><div class="eyebrow">COLLECTED MOMENTS</div><h2 id="album-title">湿地相册 <span id="album-count">0</span></h2></div><button id="close-album" class="paper-button">关闭 · P</button></header>
+      <div id="album-toolbar" class="album-toolbar" role="group" aria-label="相册批量操作">
+        <span id="album-selection-count" aria-live="polite">已选 0 张</span>
+        <button id="album-select-all" class="paper-button" disabled>全选</button>
+        <button id="album-save-selected" class="primary" disabled>保存所选（ZIP）</button>
+        <button id="album-save-all" class="paper-button" disabled>保存全部（ZIP）</button>
+        <button id="album-delete-selected" class="paper-button danger-button" disabled>删除所选</button>
+      </div>
+      <div id="album-delete-confirmation" class="album-confirmation" hidden>
+        <p id="album-delete-message" role="alert"></p><div><button id="album-cancel-delete" class="paper-button">取消</button><button id="album-confirm-delete" class="paper-button danger-button">确认删除</button></div>
+      </div>
+      <p id="album-operation-status" class="album-status" role="status" aria-live="polite"></p>
+      <a id="album-download-zip" class="paper-button album-zip-link" hidden download>下载照片 ZIP</a>
+      <p id="album-empty">还没有照片。按 C 举起相机，记录第一次相遇。</p><div id="album-grid"></div>
+      <div id="photo-detail" hidden><button id="detail-back" class="paper-button">← 返回相册</button><img id="detail-image" alt="选中的观鸟照片"><div class="detail-actions"><span id="detail-caption"></span><a id="download-photo" class="primary" download>保存到电脑</a><button id="delete-photo" class="paper-button danger-button">删除照片</button></div></div>
+      <footer>点击图片查看大图 · 勾选照片后可批量操作 · 照片保存在当前浏览器，最多 60 张</footer>
+    </section>
+  </div>
+  <div id="ending-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="ending-title"><section class="ending-sheet"><button id="close-ending" class="book-close" aria-label="关闭结局窗口">×</button><div class="eyebrow">AT THE OLD TREE</div><h2 id="ending-title">这段相遇，走到了尾声。</h2><p id="round-tally" class="ending-tally"></p><div id="ending-choices"><p id="ending-reason"></p><div class="ending-cards"><button data-ending="dusk" hidden disabled><span>结局 1 / 普通</span><b>林间向晚</b><small>暖色暮光，三只鸟留在大树下。<em>确认，进入普通结局 →</em></small></button><button data-ending="bad" hidden disabled><span>结局 2 / 坏结局</span><b>无声的林地</b><small>世界褪成黑白，树下不再有等候的鸟。<em>确认，进入坏结局 →</em></small></button><button data-ending="dream" hidden disabled><span>结局 3 / 梦幻</span><b>群鸟之约</b><small>柔和彩光与微粒，三位邻居再次相遇。<em>确认，进入梦幻结局 →</em></small></button></div></div><div id="ending-result" hidden><h3 id="ending-result-title"></h3><p id="ending-result-text"></p><div class="ending-actions"><button id="stay-ending" class="primary">留在此刻，继续拍照</button><button id="replay-story" class="paper-button">重新开始故事</button><button id="ending-observe" class="paper-button">进入观察模式</button></div></div></section></div>
   <noscript>请启用 JavaScript，并通过 VS Code Live Server 打开本页面。</noscript>
-  <script src="js/audio.js"></script><script src="js/storage.js"></script><script src="js/app.js"></script>
+  <script src="js/audio.js"></script><script src="js/storage.js"></script><script src="js/inventory.js"></script><script src="js/session.js"></script><script src="js/photo-zip.js"></script><script src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>啾，在那里！｜场景测试</title>
+
+  <script src="vendor/aframe.min.js"></script>
+  <script src="vendor/aframe-event-set-component.min.js"></script>
+  <script src="vendor/aframe-extras.min.js"></script>
+</head>
+
+<body>
+  <!-- 使用支持撤销、重做的编辑器 -->
+  <a-scene
+    inspector="url: https://cdn.jsdelivr.net/gh/c-frame/aframe-editor@1.7.x/dist/aframe-editor.min.js">
+
+    <!-- 天空 -->
+    <a-sky
+      id="sky"
+      src="../assets/images/sky1.png">
+    </a-sky>
+
+    <!-- 地面 -->
+    <a-plane
+      id="ground"
+      position="0 0 0"
+      rotation="-90 0 0"
+      width="60"
+      height="60"
+      material="
+        src: url(../assets/images/ground.png);
+        repeat: 12 12;
+        roughness: 1;
+        metalness: 0">
+    </a-plane>
+
+    <!-- 整个大场景 -->
+    <a-entity
+      id="forest-world"
+      gltf-model="url(../assets/model/forest_world.glb)"
+      position="0 0 0"
+      rotation="0 0 0"
+      scale="1 1 1">
+    </a-entity>
+
+    <!-- 环境照明 -->
+    <a-light
+      type="ambient"
+      color="#FFFFFF"
+      intensity="0.8">
+    </a-light>
+
+    <a-light
+      type="directional"
+      color="#FFF3DE"
+      intensity="0.8"
+      position="-3 8 5">
+    </a-light>
+
+    <!-- 玩家位置 -->
+    <a-entity
+      id="rig"
+      position="0 0 8"
+      movement-controls="controls: keyboard; speed: 0.15">
+
+      <a-entity
+        id="camera"
+        camera
+        position="0 1.6 0"
+        look-controls>
+      </a-entity>
+
+    </a-entity>
+
+  </a-scene>
+</body>
+</html>

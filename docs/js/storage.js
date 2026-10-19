@@ -14,5 +14,15 @@ window.ChirpStore={
   },
   async all(){const db=await this.open();return new Promise((resolve,reject)=>{const r=db.transaction('photos','readonly').objectStore('photos').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});},
   async put(photo){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put(photo);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});},
-  async delete(id){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete(id);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}
+  async delete(id){return this.deleteMany([id]);},
+  async deleteMany(ids){
+    if(!ids.length)return;
+    const db=await this.open();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction('photos','readwrite');
+      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('相册删除已取消'));
+      try{const store=tx.objectStore('photos');for(const id of new Set(ids))store.delete(id);}
+      catch(error){tx.abort();reject(error);}
+    });
+  }
 };

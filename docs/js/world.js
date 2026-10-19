@@ -98,8 +98,8 @@ AFRAME.registerComponent('chirp-world', {
     }
     return hit.position.y;
   },
-  collisionAt(x, y, z, height = CHIRP_CONFIG.player.height) {
-    const r=CHIRP_CONFIG.player.radius;
+  collisionAt(x, y, z, height = CHIRP_CONFIG.player.height, r = CHIRP_CONFIG.player.radius) {
+    height=Math.max(height,r*2+.01);
     this.capsule.set(this.capsule.start.set(x,y+r,z),this.capsule.end.set(x,y+height-r,z),r);
     const hit=this.obstacleTree.capsuleIntersect(this.capsule);
     return hit && hit.depth > .0015 ? hit : null;
@@ -166,10 +166,22 @@ if (env.skyTexture) {
     this.lights.hemi.color.set(env.hemiSky);this.lights.hemi.groundColor.set(env.hemiGround);this.lights.hemi.intensity=env.hemiIntensity;
     this.lights.sun.color.set(env.sun);this.lights.sun.intensity=env.sunIntensity;
     if(scene.renderer){scene.renderer.toneMapping=T.ACESFilmicToneMapping;scene.renderer.toneMappingExposure=env.exposure;scene.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,CHIRP_CONFIG.scene.pixelRatio));}
+    this.currentFilter=env.filter||'none';if(scene.canvas)scene.canvas.style.filter=this.currentFilter;
+    this.setupDreamParticles();this.dreamParticles.visible=name==='dream';
     this.environment=name;
     return cfg.ready;
   },
+  setupDreamParticles(){
+    if(this.dreamParticles)return;
+    const T=AFRAME.THREE,g=new T.BufferGeometry(),coords=new Float32Array(72*3),f=CHIRP_CONFIG.story.final;
+    for(let i=0;i<72;i++){coords[i*3]=f.x+(Math.random()-.5)*20;coords[i*3+1]=2+Math.random()*6;coords[i*3+2]=f.z+(Math.random()-.5)*18;}
+    g.setAttribute('position',new T.BufferAttribute(coords,3));this.particleBase=coords.slice();
+    const c=document.createElement('canvas');c.width=c.height=32;const ctx=c.getContext('2d'),grad=ctx.createRadialGradient(16,16,0,16,16,16);grad.addColorStop(0,'#fffde5');grad.addColorStop(.2,'#f8e6caaa');grad.addColorStop(1,'#f8e6ca00');ctx.fillStyle=grad;ctx.fillRect(0,0,32,32);
+    this.dreamParticles=new T.Points(g,new T.PointsMaterial({map:new T.CanvasTexture(c),size:.15,color:'#ffe5d1',transparent:true,opacity:.65,depthWrite:false,blending:T.AdditiveBlending}));this.el.sceneEl.object3D.add(this.dreamParticles);
+  },
   tick(time) {
+    if(this.dreamParticles?.visible){const a=this.dreamParticles.geometry.attributes.position;for(let i=0;i<a.count;i++){a.setY(i,this.particleBase[i*3+1]+Math.sin(time*.0004+i)*.35);a.setX(i,this.particleBase[i*3]+Math.sin(time*.00025+i)*.3);}a.needsUpdate=true;}
+
     if(!this.lights || !window.ChirpApp?.player)return;
     if(time-(this.lastShadowUpdate||0)<180)return;
     this.lastShadowUpdate=time;

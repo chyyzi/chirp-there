@@ -1,0 +1,981 @@
+{
+  "scene": {
+    "stats": {
+      "meshes": 1567,
+      "floors": 59,
+      "blockers": 415,
+      "materials": 17,
+      "instanceBatches": 148,
+      "savedDrawCalls": 843
+    },
+    "buildSeconds": 30.984336067999998,
+    "bounds": {
+      "isBox3": true,
+      "min": {
+        "x": -60,
+        "y": -0.6499999761581421,
+        "z": -45
+      },
+      "max": {
+        "x": 60,
+        "y": 9.03908920288086,
+        "z": 45
+      }
+    },
+    "positions": [
+      {
+        "id": "spawn",
+        "xyz": [
+          4,
+          1.4019999504089355,
+          36
+        ],
+        "floor": 1.4019999504089355,
+        "standingBlocked": false,
+        "groundBirdBlocked": false
+      },
+      {
+        "id": "heron",
+        "xyz": [
+          -39.5,
+          1.399999976158142,
+          7.5
+        ],
+        "floor": 1.399999976158142,
+        "standingBlocked": false,
+        "groundBirdBlocked": false
+      },
+      {
+        "id": "bulbul",
+        "xyz": [
+          5.46,
+          6.492,
+          11.59
+        ],
+        "floor": 1.425452147722254,
+        "standingBlocked": false,
+        "groundBirdBlocked": false
+      },
+      {
+        "id": "dove",
+        "xyz": [
+          45,
+          8.121135127573794,
+          -3
+        ],
+        "floor": 8.121135127573794,
+        "standingBlocked": false,
+        "groundBirdBlocked": false
+      },
+      {
+        "id": "ending-heron",
+        "xyz": [
+          1.6,
+          1.625,
+          -27
+        ],
+        "floor": 1.625,
+        "standingBlocked": false,
+        "groundBirdBlocked": false
+      },
+      {
+        "id": "ending-bulbul",
+        "xyz": [
+          5.25,
+          6.024,
+          -30.63
+        ],
+        "floor": 1.625,
+        "standingBlocked": true,
+        "groundBirdBlocked": false
+      },
+      {
+        "id": "ending-dove",
+        "xyz": [
+          8,
+          3.441,
+          -34
+        ],
+        "floor": 1.625,
+        "standingBlocked": true,
+        "groundBirdBlocked": true
+      }
+    ],
+    "animations": [
+      {
+        "id": "heron",
+        "clips": [
+          {
+            "name": "Idle",
+            "duration": 4
+          },
+          {
+            "name": "Look",
+            "duration": 1.600000023841858
+          },
+          {
+            "name": "Alert",
+            "duration": 1.600000023841858
+          },
+          {
+            "name": "Walk",
+            "duration": 1
+          },
+          {
+            "name": "Friendly",
+            "duration": 2
+          }
+        ],
+        "samples": 183600,
+        "nonFinite": 0,
+        "weightRange": [
+          1,
+          1
+        ]
+      },
+      {
+        "id": "bulbul",
+        "clips": [
+          {
+            "name": "Idle",
+            "duration": 4.041666507720947
+          },
+          {
+            "name": "Hop",
+            "duration": 1.375
+          },
+          {
+            "name": "Call",
+            "duration": 2.0416667461395264
+          }
+        ],
+        "samples": 2835000,
+        "nonFinite": 0,
+        "weightRange": [
+          1,
+          1
+        ]
+      },
+      {
+        "id": "dove",
+        "clips": [
+          {
+            "name": "Idle",
+            "duration": 4.041666507720947
+          },
+          {
+            "name": "Walk",
+            "duration": 1.0416666269302368
+          },
+          {
+            "name": "Peck",
+            "duration": 2.0416667461395264
+          }
+        ],
+        "samples": 2840400,
+        "nonFinite": 0,
+        "weightRange": [
+          1,
+          1
+        ]
+      }
+    ],
+    "tests": [
+      "真实场景地形/碰撞树构建；入口可站立；寻路所有线段复查通过",
+      "三鸟所有映射动作多轮切换，蒙皮顶点有限，动画总权重连续为1"
+    ]
+  },
+  "flow": {
+    "reports": [
+      "每轮生成24个可站立、无树石碰撞的随机浆果点",
+      "Ctrl/X切换、数字选槽、相机/普通交互互斥",
+      "真实场景：地面食物 → 接近 → 进食一次 → 返回，未重复扣背包",
+      "同一只夜鹭实际吃掉两份地面食物，成功投喂计数为2",
+      "手喂未满3秒无效；移动取消不扣食物；实际吃到仅扣一次",
+      "潜伏不涨警觉；冲刺触发逃离；35秒后安全位置复现",
+      "同一只鸟再次受惊计为第2次；同次逃跑重复触发不重复计数",
+      "故事三结局分别有3/0/3只终点鸟；路线鸟不受结局影响；切观察清除过期转场并恢复六鸟常态",
+      "重复开始/换模式重置本轮，永久图鉴与照片保留"
+    ],
+    "messages": [
+      "本轮观察完成：夜鹭（1/3）",
+      "本轮观察完成：红耳鹎（2/3）",
+      "本轮观察完成：珠颈斑鸠（3/3）",
+      "已收藏 结局 2 · 无声的林地（2/3）",
+      "本轮观察完成：夜鹭（1/3）",
+      "本轮观察完成：红耳鹎（2/3）",
+      "本轮观察完成：珠颈斑鸠（3/3）",
+      "三个结局已集齐！观察模式现可在手册设置中切换场景。",
+      "已进入观察模式：终点也有三只鸟。 照片与结局收藏保留。",
+      "已开始新一轮故事：放轻脚步，观察沿路的鸟。 照片与结局收藏保留。"
+    ],
+    "limitations": [
+      "DOM与Three.js无GPU模拟测试，不等同Chrome真人试玩"
+    ]
+  },
+  "environment": {
+    "checks": [
+      "四张天空分别对应 normal/dusk/bad/dream",
+      "乱序加载旧天空被丢弃释放",
+      "黑白滤镜作用于游戏画布，照片使用同一filter",
+      "梦幻粒子只在梦幻环境启用",
+      "返回常态清除滤镜与粒子"
+    ],
+    "requests": [
+      "assets/images/sky1.png",
+      "assets/images/sky3.png",
+      "assets/images/sky4.png",
+      "assets/images/sky2.png",
+      "assets/images/sky1.png"
+    ]
+  },
+  "asset_audit": {
+    "heron": {
+      "file": "heron.glb",
+      "bytes": 3608776,
+      "bones": 14,
+      "restBounds": {
+        "min": [
+          -0.21118160924629026,
+          -6.939391682220323e-08,
+          -0.4997559028952788
+        ],
+        "max": [
+          0.21118160924628884,
+          0.770996075357531,
+          0.4997558258372813
+        ]
+      },
+      "actions": [
+        {
+          "source": "NightHeron02_Idle.glb",
+          "clip": "Idle",
+          "duration": 4.0,
+          "rootMotion": [
+            {
+              "node": "Root",
+              "min": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "max": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "node": "Body",
+              "min": [
+                0.0,
+                0.2886999845504761,
+                -0.03999999910593033
+              ],
+              "max": [
+                0.0,
+                0.2912999987602234,
+                -0.03999999910593033
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 3.897898798705562e-18,
+          "poseBounds": {
+            "min": [
+              -0.21118160369389546,
+              -9.426686727994058e-08,
+              -0.5007691961567907
+            ],
+            "max": [
+              0.2111816036938937,
+              0.7749448384376029,
+              0.5012215667865801
+            ]
+          }
+        },
+        {
+          "source": "NightHeron02_Look.glb",
+          "clip": "Look",
+          "duration": 1.600000023841858,
+          "rootMotion": [
+            {
+              "node": "Root",
+              "min": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "max": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "node": "Body",
+              "min": [
+                0.0,
+                0.28999999165534973,
+                -0.03999999910593033
+              ],
+              "max": [
+                0.0,
+                0.28999999165534973,
+                -0.03999999910593033
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.1418832391500473,
+          "poseBounds": {
+            "min": [
+              -0.21118160369389546,
+              -8.843732613109488e-08,
+              -0.4997559045054233
+            ],
+            "max": [
+              0.22924325668490741,
+              0.7709961336577843,
+              0.49981253591128266
+            ]
+          }
+        },
+        {
+          "source": "NightHeron02_Alert.glb",
+          "clip": "Alert",
+          "duration": 1.600000023841858,
+          "rootMotion": [
+            {
+              "node": "Root",
+              "min": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "max": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "node": "Body",
+              "min": [
+                0.0,
+                0.28999999165534973,
+                -0.03999999910593033
+              ],
+              "max": [
+                0.0,
+                0.2929999828338623,
+                -0.03999999910593033
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0029999911785125732,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.05139051377773285,
+          "poseBounds": {
+            "min": [
+              -0.21118160510345574,
+              -8.391882161550013e-08,
+              -0.4997559021969808
+            ],
+            "max": [
+              0.21118160510345405,
+              0.7958537379880811,
+              0.4997557575763385
+            ]
+          }
+        },
+        {
+          "source": "NightHeron02_Walk.glb",
+          "clip": "Walk",
+          "duration": 1.0,
+          "rootMotion": [
+            {
+              "node": "Root",
+              "min": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "max": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "node": "Body",
+              "min": [
+                0.0,
+                0.28999999165534973,
+                -0.03999999910593033
+              ],
+              "max": [
+                0.0,
+                0.2949453592300415,
+                -0.03999999910593033
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.21118576316047774,
+              -8.347479379068952e-06,
+              -0.5017740150373315
+            ],
+            "max": [
+              0.21118579809916294,
+              0.7774826970821841,
+              0.5031224175744008
+            ]
+          }
+        },
+        {
+          "source": "NightHeron02_Friendly.glb",
+          "clip": "Friendly",
+          "duration": 2.0,
+          "rootMotion": [
+            {
+              "node": "Root",
+              "min": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "max": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "node": "Body",
+              "min": [
+                0.0,
+                0.28999999165534973,
+                -0.03999999910593033
+              ],
+              "max": [
+                0.0,
+                0.28999999165534973,
+                -0.03999999910593033
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.21118160369389546,
+              -8.843732613109488e-08,
+              -0.4997559045054233
+            ],
+            "max": [
+              0.2111816036938937,
+              0.7863057074507329,
+              0.49975575862666044
+            ]
+          }
+        }
+      ],
+      "verified": "All source nodes, inverse bind matrices, mesh attributes and triangle indices match exactly; animation sampler buffers copied byte-for-byte.",
+      "forwardAxis": "+Z",
+      "upAxis": "+Y",
+      "originAtFeet": true,
+      "suggestedScale": 1.0,
+      "suggestedScaledFootClearance": 0.01,
+      "actionPlaybackNotes": "Loop Idle and locomotion; blend .2-.35 seconds. Look and Alert have different start/end poses and should play once, then hold or blend away."
+    },
+    "bulbul": {
+      "file": "bulbul.glb",
+      "bytes": 3552664,
+      "bones": 35,
+      "restBounds": {
+        "min": [
+          -0.2045895485742971,
+          1.8933506767016568e-08,
+          -0.5000001895549254
+        ],
+        "max": [
+          0.20458954401806456,
+          0.9489693360106287,
+          0.49999977199382817
+        ]
+      },
+      "actions": [
+        {
+          "source": "Red-eared Bulbul_Gaze.glb",
+          "clip": "Idle",
+          "duration": 4.041666507720947,
+          "rootMotion": [
+            {
+              "node": "tripo::Root",
+              "min": [
+                1.7629558252626218e-15,
+                -0.4277344048023224,
+                1.4404571150239062e-14
+              ],
+              "max": [
+                1.7629558252626218e-15,
+                -0.4277344048023224,
+                1.4404571150239062e-14
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.20829889440472224,
+              -0.014258935913440676,
+              -0.5408428412078439
+            ],
+            "max": [
+              0.2080031824102928,
+              0.9490151150566483,
+              0.5130815906181345
+            ]
+          }
+        },
+        {
+          "source": "Red-eared Bulbul_Hop.glb",
+          "clip": "Hop",
+          "duration": 1.375,
+          "rootMotion": [
+            {
+              "node": "tripo::Root",
+              "min": [
+                -1.0337868339149736e-08,
+                -0.4723408818244934,
+                -1.061253662726358e-08
+              ],
+              "max": [
+                2.5619648624797264e-09,
+                -0.23885565996170044,
+                2.572087209884444e-09
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.20458956195643763,
+              -0.0252773704309186,
+              -0.5045059864320394
+            ],
+            "max": [
+              0.2045895807724258,
+              1.1567537509342969,
+              0.5395325639749625
+            ]
+          }
+        },
+        {
+          "source": "Red-eared Bulbul_Call.glb",
+          "clip": "Call",
+          "duration": 2.0416667461395264,
+          "rootMotion": [
+            {
+              "node": "tripo::Root",
+              "min": [
+                1.7629558252626218e-15,
+                -0.4277344048023224,
+                1.4404571150239062e-14
+              ],
+              "max": [
+                1.7629558252626218e-15,
+                -0.4277344048023224,
+                1.4404571150239062e-14
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.20458955399494663,
+              -0.021396441046410416,
+              -0.5496909255067435
+            ],
+            "max": [
+              0.20458957554683488,
+              0.9649438557261202,
+              0.523946748421106
+            ]
+          }
+        }
+      ],
+      "verified": "All source nodes, inverse bind matrices, mesh attributes and triangle indices match exactly; animation sampler buffers copied byte-for-byte.",
+      "forwardAxis": "+Z",
+      "upAxis": "+Y",
+      "originAtFeet": true,
+      "suggestedScale": 0.55,
+      "suggestedScaledFootClearance": 0.02,
+      "actionPlaybackNotes": "All source clip first/last samples match. Hop includes vertical root motion; do not add a second vertical jump in code."
+    },
+    "dove": {
+      "file": "dove.glb",
+      "bytes": 4173068,
+      "bones": 20,
+      "restBounds": {
+        "min": [
+          -0.2196326612049391,
+          -1.740657729333769e-08,
+          -0.5000001008859505
+        ],
+        "max": [
+          0.21963258389673657,
+          0.7377989541149558,
+          0.5000002158726038
+        ]
+      },
+      "actions": [
+        {
+          "source": "Pink-necked green pigeon_Gaze.glb",
+          "clip": "Idle",
+          "duration": 4.041666507720947,
+          "rootMotion": [
+            {
+              "node": "tripo::Root",
+              "min": [
+                1.9860266370730313e-16,
+                -0.3417968451976776,
+                9.414658976866037e-16
+              ],
+              "max": [
+                1.9860266370730313e-16,
+                -0.3417968451976776,
+                9.414658976866037e-16
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.2216855355185368,
+              -0.05700543440660479,
+              -0.5187921605178908
+            ],
+            "max": [
+              0.2216619258005681,
+              0.7461162718668496,
+              0.5045954169845512
+            ]
+          }
+        },
+        {
+          "source": "Pink-necked green pigeon_Walk.glb",
+          "clip": "Walk",
+          "duration": 1.0416666269302368,
+          "rootMotion": [
+            {
+              "node": "tripo::Root",
+              "min": [
+                4.6546975080685965e-18,
+                -0.3417968451976776,
+                9.414658976866037e-16
+              ],
+              "max": [
+                2.3584068052321533e-16,
+                -0.31779685616493225,
+                4.382972318417444e-10
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.2211250426139183,
+              -0.0226169002388663,
+              -0.5109638602472452
+            ],
+            "max": [
+              0.22112414869553165,
+              0.760110818437919,
+              0.5062032644616355
+            ]
+          }
+        },
+        {
+          "source": "Pink-necked green pigeon_Peck.glb",
+          "clip": "Peck",
+          "duration": 2.0416667461395264,
+          "rootMotion": [
+            {
+              "node": "tripo::Root",
+              "min": [
+                1.9860266370730313e-16,
+                -0.3417968451976776,
+                9.414658976866037e-16
+              ],
+              "max": [
+                1.9860266370730313e-16,
+                -0.3417968451976776,
+                9.414658976866037e-16
+              ],
+              "endMinusStart": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "maximumEndpointChannelDifference": 0.0,
+          "poseBounds": {
+            "min": [
+              -0.21963262736969472,
+              -0.07981568191409497,
+              -0.5051162680894412
+            ],
+            "max": [
+              0.21963257701859015,
+              0.7758413572928394,
+              0.5835679740720031
+            ]
+          }
+        }
+      ],
+      "verified": "All source nodes, inverse bind matrices, mesh attributes and triangle indices match exactly; animation sampler buffers copied byte-for-byte.",
+      "forwardAxis": "+Z",
+      "upAxis": "+Y",
+      "originAtFeet": true,
+      "suggestedScale": 0.65,
+      "suggestedScaledFootClearance": 0.05,
+      "actionPlaybackNotes": "All source clip first/last samples match. Walk is in place."
+    }
+  },
+  "placements": {
+    "coordinates": "glTF/web X Y Z; Y values are support surface heights",
+    "routeBulbul": {
+      "node": "tree-beech-european-generic-mature-a.031",
+      "position": [
+        5.46,
+        6.491999360860946,
+        11.59
+      ],
+      "normal": [
+        0.27692164,
+        0.96064373,
+        -0.02186397
+      ],
+      "suggestedYaw": -1.5707963267948966,
+      "targetHeight": 0.43,
+      "uniformScale": 0.45312317656930473,
+      "footClearance": 0.025,
+      "yawRadians": -1.5707963267948966,
+      "modelPosition": [
+        5.46,
+        6.516999360860947,
+        11.59
+      ]
+    },
+    "finalBulbul": {
+      "node": "tree-oak-english-generic-mature-a",
+      "position": [
+        5.25,
+        6.024123418359059,
+        -30.63
+      ],
+      "normal": [
+        -0.19303766,
+        0.86862105,
+        -0.45632656
+      ],
+      "targetHeight": 0.43,
+      "uniformScale": 0.45312317656930473,
+      "footClearance": 0.025,
+      "yawRadians": 0,
+      "modelPosition": [
+        5.25,
+        6.049123418359059,
+        -30.63
+      ]
+    },
+    "finalDove": {
+      "node": "tree-sequoia-giant-part-rotten-big-b",
+      "position": [
+        8,
+        3.440710855418708,
+        -34
+      ],
+      "normal": [
+        0.11574632,
+        0.9159052,
+        0.38434419
+      ],
+      "targetHeight": 0.48,
+      "uniformScale": 0.65058373602033,
+      "footClearance": 0.055,
+      "yawRadians": 0,
+      "modelPosition": [
+        8,
+        3.495710855418708,
+        -34
+      ]
+    },
+    "finalHeron": {
+      "node": "AncientTree_Clearing",
+      "position": [
+        1.6,
+        1.625,
+        -27
+      ],
+      "normal": [
+        0,
+        1,
+        0
+      ],
+      "targetHeight": 0.9,
+      "uniformScale": 1.1673211171440094,
+      "footClearance": 0.01,
+      "yawRadians": 0.4,
+      "modelPosition": [
+        1.6,
+        1.635,
+        -27
+      ]
+    },
+    "caveat": "Candidate placements verified against mesh geometry; final gameplay camera/foliage visibility still needs visual test. Add foot clearance after scale.",
+    "validation": {
+      "routeGroundView": "route_from_ground.png",
+      "finalGroundView": "final_from_ground.png",
+      "method": "Blender 4.4 Cycles, uploaded scene plus merged skinned birds at requested uniform target heights, Idle frame 1. No trunk penetration or buried bird bodies observed. Lighting is a geometry check, not final game lighting.",
+      "finalWideView": "final_wide.png",
+      "finalWideCheck": "All three final birds visible from ground view; heron stands on open ground, dove on right log and bulbul on low tree branch. No obvious trunk/body clipping or foliage burial."
+    }
+  },
+  "limitations": [
+    "未进行Chrome WebGL实机试玩；DOM和Three.js状态测试不等同浏览器GPU渲染、鼠标锁定、全屏、下载或设备帧率验证。",
+    "Blender局部图仅验证几何站位。"
+  ],
+  "audio_fix": {
+    "version": "2026-10-19-audio-fix",
+    "reproducedBefore": "music/wind/water ReferenceError: attenuation is not defined",
+    "checks": [
+      "复现旧版3个循环声源均启动失败",
+      "修复后music/wind/water分别接入对应音量节点并启动循环",
+      "17个音频文件均被实际读取",
+      "音量调节、暂停/恢复节点增益通过",
+      "快门与鸟鸣仍使用独立衰减节点"
+    ],
+    "note": "Web Audio节点模拟，另用ffmpeg检查真实音频解码；未进行Chrome音频实听。",
+    "actualDecode": "17/17 audio files decoded successfully with ffmpeg"
+  },
+  "ending_rules": {
+    "version": "2026-10-19-ending-rules",
+    "matrixCases": 64,
+    "checks": [
+      "64种观察/惊扰/投喂组合通过：唯一结局卡、坏结局优先、1次惊扰归普通、非法选择拒绝",
+      "必须到终点主动确认；打开/关闭窗口不解锁，不自动播放结局",
+      "按真实事件次数累计；同鸟可重复；同次逃跑/同份食物去重；仅警觉、未吃到食物与固定鸟不计入",
+      "观察模式不累计故事行为；未集齐结局时场景UI与方法入口均锁定",
+      "确认转场时冻结记录；重复确认无效；中断/重开及过期转场回调不会解锁或污染新回合",
+      "三个结局实际完成后依次解锁；观察模式四场景开放；切景不重置位置、固定三鸟始终显示",
+      "模拟刷新恢复结局收藏/观察场景；故事新一轮恢复常态并清空行为；换模式保留收藏",
+      "异常存档安全回退；浏览器存储失败时明确提示，本次游玩仍可继续"
+    ],
+    "limitations": [
+      "使用实际JS与HTML的Node/linkedom状态测试；不等同Chrome WebGL实机试玩。"
+    ],
+    "assumptions": [
+      "仅惊扰1次归普通，仍需观察齐全",
+      "坏结局不要求观察齐全，但仍需终点G确认",
+      "惊扰按真正逃离，投喂按实际消费成功，同鸟可重复",
+      "观察场景切换始终保留固定三鸟"
+    ],
+    "audioRegression": "循环背景音乐节点回归检查通过；audio.js 与上次音乐修复版相同"
+  },
+  "album_and_clear_ui": {
+    "checks": [
+      "U/清屏按钮/暂停菜单恢复按钮通过；长按与Ctrl+U不重复触发；3D标记与手持道具同步隐藏，移动和缩放状态不变",
+      "勾选/全选/取消全选、选中描边、未选择禁用按钮、查看大图再返回保留选择通过",
+      "所选2张/全部3张分别生成单个ZIP；照片不移除；下载链接保留以便手动重试；旧导出URL释放",
+      "单张和批量删除都先确认；取消和Esc不删除照片",
+      "注入事务失败后照片/选中项完整保留；成功时一个事务只删除指定照片，重新读取不复现，图鉴/结局不变",
+      "浏览器未能持久保存的临时照片，也可以从当前页面相册删除",
+      "打包时阻止重复提交和删除；打包失败恢复按钮且照片保留",
+      "最后一张删除后显示空相册，数量和批量按钮同步更新",
+      "照片复选框获得焦点后，P键仍可关闭相册"
+    ],
+    "limitations": [
+      "实际应用JS+HTML的Node/linkedom状态验证；IndexedDB采用事务接口模拟，未做Chrome实机下载/渲染测试。"
+    ],
+    "zipVerification": [
+      "album-selected-test.zip: 2 JPEGs; CRC, UTF-8 names, unique names, byte-for-byte originals and image decoding passed",
+      "album-all-test.zip: 3 JPEGs; CRC, UTF-8 names, unique names, byte-for-byte originals and image decoding passed"
+    ]
+  }
+}

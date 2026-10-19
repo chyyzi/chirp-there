@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>啾，在那里！｜行走与跳跃测试</title>
+  <script src="vendor/aframe.min.js"></script>
+  <script src="vendor/aframe-event-set-component.min.js"></script>
+  <script src="vendor/aframe-extras.min.js"></script>
+  <style>
+    body { margin: 0; font-family: system-ui, "Microsoft YaHei", sans-serif; }
+    #panel { position: fixed; z-index: 10; top: 16px; left: 16px; max-width: 350px;
+      padding: 14px 16px; color: #fff; background: rgba(25, 39, 27, .86);
+      border-radius: 12px; font-size: 14px; line-height: 1.65; }
+    #panel strong { font-size: 17px; }
+    #status { margin: 6px 0; color: #daedc9; }
+    button { margin: 8px 6px 0 0; padding: 7px 12px; border: 0;
+      border-radius: 6px; background: #e8efdf; color: #243a26; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: wait; }
+    #crosshair { position: fixed; z-index: 9; top: 50%; left: 50%; width: 5px;
+      height: 5px; border-radius: 50%; background: #fff; pointer-events: none;
+      transform: translate(-50%, -50%); box-shadow: 0 0 2px #222; display: none; }
+    #pose { display: block; font-size: 12px; color: #c5d7bc; }
+  </style>
+  <script>
+    // 桌面测试控制器：只负责水平行走、地形高度、跳跃与防止走出边缘。
+    // 它取代 movement-controls / wasd-controls，避免两套代码同时移动玩家。
+    AFRAME.registerComponent('desktop-walk', {
+      schema: {
+        world: { type: 'selector' },
+        camera: { type: 'selector' },
+        speed: { default: 4 },          // 普通行走速度，米/秒
+        runSpeed: { default: 7 },       // Shift 加速
+        jumpSpeed: { default: 5 },      // 起跳速度；数值越大跳得越高
+        gravity: { default: 14 },
+        stepHeight: { default: 0.5 },   // 可直接踏上的小台阶
+        maxDrop: { default: 1.2 },      // 阻止直接走下过高的断崖
+        maxSlope: { default: 55 }       // 可行走坡度上限，单位为度
+      },
+
+      init: function () {
+        const T = AFRAME.THREE;
+        this.keys = new Set();
+        this.floors = [];
+        this.water = [];
+        this.bounds = new T.Box3();
+        this.ray = new T.Raycaster();
+        this.down = new T.Vector3(0, -1, 0);
+        this.origin = new T.Vector3();
+        this.normal = new T.Vector3();
+        this.normalMatrix = new T.Matrix3();
+        this.forward = new T.Vector3();
+        this.right = new T.Vector3();
+        this.move = new T.Vector3();
+        this.quaternion = new T.Quaternion();
+        this.start = this.el.object3D.position.clone();
+        this.safe = this.start.clone();
+        this.velocityY = 0;
+        this.grounded = false;
+        this.ready = false;
+        this.lastHud = 0;
+        this.status = document.getElementById('status');
+        this.startButton = document.getElementById('start');
+
+        this.onKeyDown = (event) => {
+          if (!this.hasControl() || event.ctrlKey || event.metaKey || event.altKey) return;
+          if (!['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown',
+                'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyR'].includes(event.code)) return;
+          event.preventDefault();
+          this.keys.add(event.code);
+          if (event.code === 'Space' && !event.repeat && this.grounded) {
+            this.velocityY = this.data.jumpSpeed;
+            this.grounded = false;
+          }
+          if (event.code === 'KeyR' && !event.repeat) this.reset();
+        };
+        this.onKeyUp = (event) => this.keys.delete(event.code);
+        this.clearKeys = () => this.keys.clear();
+        this.onModelLoaded = () => { this.scanSurfaces(); this.reset(); };
+        this.onModelError = () => {
+          this.ready = false;
+          this.status.textContent = '模型加载失败：请检查 ../assets/model/forest_world.glb';
+          this.startButton.disabled = true;
+        };
+        window.addEventListener('keydown', this.onKeyDown);
+        window.addEventListener('keyup', this.onKeyUp);
+        window.addEventListener('blur', this.clearKeys);
+        document.addEventListener('pointerlockchange', this.clearKeys);
+        this.data.world.addEventListener('model-loaded', this.onModelLoaded);
+        this.data.world.addEventListener('model-error', this.onModelError);
+        if (this.data.world.getObject3D('mesh')) this.onModelLoaded();
+      },
+
+      // 根据你这个 GLB 内的对象名称，只选择真正的地形、小路、平台和木栈道。
+      // 树冠、灌木、鸟、天空不会成为脚下地面；湖面单独作为禁行区域。
+      scanSurfaces: function () {
+        const root = this.data.world.getObject3D('mesh');
+        if (!root) return;
+        this.floors.length = 0;
+        this.water.length = 0;
+        this.bounds.makeEmpty();
+        this.data.world.object3D.updateWorldMatrix(true, true);
+        root.traverse((mesh) => {
+          if (!mesh.isMesh) return;
+          let floor = false, water = false;
+          for (let node = mesh; node; node = node.parent) {
+            const name = node.name || '';
+            if (/^(Terrain_|Path_|PathEdge_|AncientTree_Clearing(?:$|_)|Deck_\d+)/.test(name)) floor = true;
+            if (/^Water_/.test(name)) water = true;
+            if (node === root) break;
+          }
+          if (floor) {
+            this.floors.push(mesh);
+            this.bounds.expandByObject(mesh);
+          }
+          if (water) this.water.push(mesh);
+        });
+        this.ready = this.floors.length > 0;
+        this.startButton.disabled = !this.ready;
+        this.status.textContent = this.ready
+          ? '模型已就绪，点击「开始行走」进入测试。'
+          : '未找到可行走表面。此版本按你上传的 GLB 对象名称匹配。';
+      },
+
+      hasControl: function () {
+        const scene = this.el.sceneEl;
+        return this.ready && scene.isPlaying &&
+          document.pointerLockElement === scene.canvas &&
+          !(AFRAME.INSPECTOR && AFRAME.INSPECTOR.isOpened) &&
+          !scene.is('vr-mode');
+      },
+
+      // 从脚下向下发射检测射线，取得坡地 / 小路 / 栈道的真实高度。
+      // upper 是最高允许接触的位置，避免被上方的平台吸上去。
+      floorAt: function (x, z, upper) {
+        const margin = 0.35;
+        if (x < this.bounds.min.x + margin || x > this.bounds.max.x - margin ||
+            z < this.bounds.min.z + margin || z > this.bounds.max.z - margin) return null;
+        this.origin.set(x, upper, z);
+        this.ray.set(this.origin, this.down);
+        this.ray.near = 0;
+        this.ray.far = 300;
+        const hits = this.ray.intersectObjects(this.floors, false);
+        const cosSlope = Math.cos(this.data.maxSlope * Math.PI / 180);
+        let hit = null;
+        for (const candidate of hits) {
+          if (!candidate.face) continue;
+          this.normalMatrix.getNormalMatrix(candidate.object.matrixWorld);
+          this.normal.copy(candidate.face.normal).applyMatrix3(this.normalMatrix).normalize();
+          if (this.normal.y < cosSlope) continue;
+          hit = candidate;
+          break;
+        }
+        if (!hit) return null;
+        if (this.water.length) {
+          // 水位高于地形且没有木栈道时，挡住湖面；栈道高于水面仍可走。
+          this.origin.y = this.bounds.max.y + 20;
+          this.ray.set(this.origin, this.down);
+          const waterHit = this.ray.intersectObjects(this.water, false)[0];
+          if (waterHit && waterHit.point.y > hit.point.y + 0.03) return null;
+        }
+        return hit.point.y;
+      },
+
+      reset: function () {
+        if (!this.ready) return;
+        const p = this.el.object3D.position;
+        const y = this.floorAt(this.start.x, this.start.z, this.bounds.max.y + 20);
+        if (y === null) {
+          this.status.textContent = '起点不在可行走地面上，请调整 rig 的 position。';
+          this.ready = false;
+          this.startButton.disabled = true;
+          return;
+        }
+        p.set(this.start.x, y + 0.02, this.start.z);
+        this.safe.copy(p);
+        this.velocityY = 0;
+        this.grounded = true;
+        this.keys.clear();
+      },
+
+      moveAxis: function (axis, amount) {
+        if (!amount) return;
+        const p = this.el.object3D.position;
+        const x = axis === 'x' ? p.x + amount : p.x;
+        const z = axis === 'z' ? p.z + amount : p.z;
+        const floor = this.floorAt(x, z, p.y + this.data.stepHeight);
+        if (floor === null) return; // 地图边缘 / 湖面 / 陡坡：停止前进。
+        if (this.grounded && p.y - floor > this.data.maxDrop) return;
+        if (!this.grounded && floor > p.y + 0.001) return;
+        p[axis] += amount;
+        if (this.grounded) p.y = floor + 0.02;
+      },
+
+      tick: function (time, delta) {
+        if (!this.hasControl() || !delta) return;
+        const p = this.el.object3D.position;
+        this.data.camera.object3D.getWorldQuaternion(this.quaternion);
+        this.forward.set(0, 0, -1).applyQuaternion(this.quaternion);
+        this.forward.y = 0;
+        if (this.forward.lengthSq() < 0.0001) {
+          // 垂直看天 / 看地时，继续采用水平朝向。
+          const look = this.data.camera.components['look-controls'];
+          const yaw = look ? look.yawObject.rotation.y : 0;
+          this.forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+        }
+        this.forward.normalize();
+        this.right.set(-this.forward.z, 0, this.forward.x);
+        const forward = Number(this.keys.has('KeyW') || this.keys.has('ArrowUp')) -
+                        Number(this.keys.has('KeyS') || this.keys.has('ArrowDown'));
+        const sideways = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) -
+                         Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft'));
+        this.move.copy(this.forward).multiplyScalar(forward).addScaledVector(this.right, sideways);
+        if (this.move.lengthSq() > 0) this.move.normalize();
+        const speed = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')
+          ? this.data.runSpeed : this.data.speed;
+        // 帧耗时过大时限制单次步长，避免一次跨过台阶和边缘。
+        const dt = Math.min(delta / 1000, 0.06);
+        const steps = Math.max(1, Math.ceil(dt / 0.015));
+        const step = dt / steps;
+        for (let i = 0; i < steps; i++) {
+          this.moveAxis('x', this.move.x * speed * step);
+          this.moveAxis('z', this.move.z * speed * step);
+          const floor = this.floorAt(p.x, p.z, p.y + this.data.stepHeight);
+          if (floor === null) {
+            p.copy(this.safe); // 异常时回到最近的安全位置，不继续掉落。
+            this.velocityY = 0;
+            this.grounded = true;
+            continue;
+          }
+          if (!this.grounded) {
+            this.velocityY -= this.data.gravity * step;
+            const nextY = p.y + this.velocityY * step;
+            if (this.velocityY <= 0 && nextY <= floor + 0.02) {
+              p.y = floor + 0.02;
+              this.velocityY = 0;
+              this.grounded = true;
+            } else {
+              p.y = nextY;
+            }
+          } else {
+            p.y = floor + 0.02;
+          }
+          if (this.grounded) this.safe.copy(p);
+        }
+        if (time - this.lastHud > 150) {
+          document.getElementById('pose').textContent =
+            `脚下坐标：${p.x.toFixed(2)} ${p.y.toFixed(2)} ${p.z.toFixed(2)} · ${this.grounded ? '地面' : '跳跃中'}`;
+          this.lastHud = time;
+        }
+      },
+
+      pause: function () { if (this.keys) this.keys.clear(); },
+      play: function () {
+        // 关闭编辑器后重新计算表面矩阵，兼容调整整个场景的位置 / 大小。
+        if (this.data.world && this.data.world.getObject3D('mesh')) this.scanSurfaces();
+      },
+      remove: function () {
+        window.removeEventListener('keydown', this.onKeyDown);
+        window.removeEventListener('keyup', this.onKeyUp);
+        window.removeEventListener('blur', this.clearKeys);
+        document.removeEventListener('pointerlockchange', this.clearKeys);
+        this.data.world.removeEventListener('model-loaded', this.onModelLoaded);
+        this.data.world.removeEventListener('model-error', this.onModelError);
+      }
+    });
+  </script>
+</head>
+<body>
+  <div id="panel">
+    <strong>啾，在那里！ · 行走测试</strong>
+    <div id="status">正在加载场景……</div>
+    WASD：行走　鼠标：转头<br>
+    空格：跳跃　Shift：加速　R：回起点<br>
+    Esc：释放鼠标，随后可以点击按钮或打开编辑器
+    <div><button id="start" disabled>开始行走</button><button id="reset">回起点</button><button id="copy">复制机位</button></div>
+    <span id="pose"></span>
+  </div>
+  <div id="crosshair"></div>
+
+  <a-scene inspector="url: https://cdn.jsdelivr.net/gh/c-frame/aframe-editor@1.7.x/dist/aframe-editor.min.js">
+    <a-sky id="sky" src="../assets/images/sky1.png"></a-sky>
+
+    <!-- 保留现有地面贴图；行走高度来自 GLB 的实际地形。 -->
+    <a-plane id="ground" position="0 0 0" rotation="-90 0 0" width="60" height="60"
+      material="src: url(../assets/images/ground.png); repeat: 12 12; roughness: 1; metalness: 0">
+    </a-plane>
+
+    <a-entity id="forest-world" gltf-model="url(../assets/model/forest_world.glb)"
+      position="0 0 0" rotation="0 0 0" scale="1 1 1"></a-entity>
+
+    <a-light type="ambient" color="#FFFFFF" intensity="0.8"></a-light>
+    <a-light type="directional" color="#FFF3DE" intensity="0.8" position="-3 8 5"></a-light>
+
+    <!-- rig 是脚下位置；camera 的 1.6 是站立时眼睛距离脚底的高度。 -->
+    <!-- 已移除原来的 movement-controls，请勿再添加 wasd-controls。 -->
+    <a-entity id="rig" position="0 0 8"
+      desktop-walk="world: #forest-world; camera: #camera; speed: 4; runSpeed: 7; jumpSpeed: 5">
+      <a-entity id="camera" camera position="0 1.6 0"
+        look-controls="pointerLockEnabled: true"></a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const scene = document.querySelector('a-scene');
+    const controller = () => document.getElementById('rig').components['desktop-walk'];
+    document.getElementById('start').addEventListener('click', () => {
+      if (!controller() || !controller().ready || !scene.canvas) return;
+      if (!scene.canvas.requestPointerLock) {
+        document.getElementById('status').textContent = '请使用电脑端 Chrome，通过 Live Server 打开此页面。';
+        return;
+      }
+      const request = scene.canvas.requestPointerLock();
+      if (request && request.catch) request.catch(() => {
+        document.getElementById('status').textContent = '鼠标未锁定，请再点一次「开始行走」。';
+      });
+    });
+    document.getElementById('reset').addEventListener('click', () => {
+      if (controller()) controller().reset();
+    });
+    document.addEventListener('pointerlockchange', () => {
+      const locked = document.pointerLockElement === scene.canvas;
+      document.getElementById('crosshair').style.display = locked ? 'block' : 'none';
+      if (controller() && controller().ready) document.getElementById('status').textContent = locked
+        ? '行走中：空格跳跃；Esc 释放鼠标。'
+        : '已暂停行走，点击「开始行走」继续。';
+    });
+    document.getElementById('copy').addEventListener('click', async () => {
+      const p = document.getElementById('rig').object3D.position;
+      const r = document.getElementById('camera').object3D.rotation;
+      const degrees = AFRAME.THREE.MathUtils.radToDeg;
+      const text = `rig position="${p.x.toFixed(3)} ${p.y.toFixed(3)} ${p.z.toFixed(3)}"\n` +
+        `camera rotation="${degrees(r.x).toFixed(2)} ${degrees(r.y).toFixed(2)} ${degrees(r.z).toFixed(2)}"`;
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById('status').textContent = '机位已复制，可粘贴到记事本保存。';
+      } catch (error) { window.prompt('请复制下面的机位：', text); }
+    });
+  </script>
+</body>
+</html>

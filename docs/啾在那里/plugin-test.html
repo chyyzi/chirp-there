@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>啾，在那里！｜A-Frame 插件练习</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font:15px/1.65 system-ui,"Microsoft YaHei",sans-serif;color:#213731;background:#eff3ec}
+    main{display:grid;grid-template-columns:330px 1fr;min-height:100vh}aside{padding:24px;background:#fbfcf7;overflow:auto;max-height:100vh}
+    h1{font-size:23px;line-height:1.4;margin:0 0 8px}h2{font-size:17px;margin:20px 0 8px}p{margin:8px 0}.small{font-size:12px;color:#647369}
+    .step{border-top:1px solid #dce3d7;margin-top:20px;padding-top:2px}.status{padding:12px;background:#e3eedb;border-radius:6px}
+    button,select,input{font:inherit;max-width:100%}button{background:#294d3e;color:white;border:0;border-radius:5px;padding:9px 13px;cursor:pointer;margin:6px 4px 0 0}
+    button:disabled,select:disabled{opacity:.5;cursor:default}select{width:100%;padding:7px;margin:7px 0}input[type=file]{font-size:12px;width:100%;margin:6px 0}
+    #stage{height:100vh;min-width:0}a-scene{height:100%;width:100%}#clips{word-break:break-word}code{font-size:12px;background:#edf0e8;padding:2px 4px}
+    @media(max-width:760px){main{display:block}aside{max-height:none}#stage{height:65vh}h1{font-size:20px}}
+  </style>
+  <!-- 01：加载顺序。三个文件已附在 vendor 中。 -->
+  <script src="vendor/aframe.min.js"></script>
+  <script src="vendor/aframe-event-set-component.min.js"></script>
+  <script src="vendor/aframe-extras.min.js"></script>
+</head>
+<body>
+<main>
+  <aside>
+    <p class="small">《啾，在那里！》· 功能练习页</p>
+    <h1>把三个交互跑起来</h1>
+    <p>在画面空白处按住鼠标拖动，可以转头。直接点击物体进行交互。</p>
+    <p id="library-status" class="small">正在检查脚本…</p>
+    <section class="step">
+      <h2>1 / 点击反馈</h2>
+      <p>找到前方的绿色方块。鼠标指向它会变亮；点击后，黄色标记会出现，并解锁蓝色观察点。</p>
+      <div id="clue-status" class="status">等待点击绿色方块。</div>
+    </section>
+    <section class="step">
+      <h2>2 / 观察点移动</h2>
+      <p>稍微向下看，点击右前方蓝色圆点 2，到达水边测试点；再点击更远处的紫色圆点 3。</p>
+      <div id="move-status" class="status">当前位置：入口。先完成步骤 1。</div>
+      <button id="home" type="button">返回入口</button>
+      <p class="small">这次使用瞬移模式，先检查节点坐标。后续可加完整画面的淡入淡出。</p>
+    </section>
+    <section class="step">
+      <h2>3 / 鸟类动作</h2>
+      <p>选择你们自己的 GLB 文件。页面会显示模型，并列出它自带的动画。</p>
+      <input id="model-file" type="file" accept=".glb">
+      <div id="model-status" class="status">还没有载入鸟模型。</div>
+      <p id="clips" class="small">动画列表：等待模型。</p>
+      <select id="clip-select" aria-label="选择模型动画" disabled><option>尚无动画</option></select>
+      <button id="play" disabled type="button">播放所选动作</button>
+      <button id="stop" disabled type="button">暂停动作</button>
+      <button id="approach" disabled type="button">整体靠近测试</button>
+      <p class="small">“整体靠近”移动整个模型。转头、振翅等内部动作，需要模型本身有动画。</p>
+    </section>
+    <p class="small">刷新会重置练习。选择文件只用于本地试跑；正式项目需将模型放进 assets/models 并改成固定路径。</p>
+  </aside>
+  <div id="stage">
+    <!-- 02：允许鼠标选择 class="clickable" 的物体。 -->
+    <a-scene id="scene" embedded cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .clickable" vr-mode-ui="enabled: false" background="color: #DBEBD8">
+      <a-plane rotation="-90 0 0" width="40" height="40" color="#E7E3CF"></a-plane>
+      <a-light type="ambient" intensity="0.9"></a-light>
+      <a-light type="directional" intensity="0.8" position="-3 8 4"></a-light>
+
+      <!-- 03：Event Set。发现标记后，黄色 reward 显示出来。 -->
+      <a-box id="clue" class="clickable" position="0 1.2 -2" width="0.6" height="0.6" depth="0.6" color="#63A682"
+        event-set__enter="_event: mouseenter; color: #A4D99B"
+        event-set__leave="_event: mouseleave; color: #63A682"
+        event-set__found="_event: click; _target: #reward; visible: true"></a-box>
+      <a-octahedron id="reward" position="0 2.05 -2" radius="0.2" color="#E6B953" visible="false"></a-octahedron>
+
+      <!-- 04：Checkpoints。offset 抵消圆点的高度，使 rig 的脚部仍在 y=0。 -->
+      <a-circle id="entry" class="clickable" checkpoint="offset: 0 -0.03 0" position="0 0.03 2" rotation="-90 0 0" radius="0.55" color="#86A891"></a-circle>
+      <a-circle id="water" checkpoint="offset: 0 -0.03 0" position="3 0.03 -4" rotation="-90 0 0" radius="0.55" color="#B6C0B6"></a-circle>
+      <a-text value="2" position="3 0.7 -4" align="center" color="#344B43" width="5"></a-text>
+      <a-circle id="clearing" checkpoint="offset: 0 -0.03 0" position="0 0.03 -10" rotation="-90 0 0" radius="0.55" color="#B6C0B6"></a-circle>
+      <a-text value="3" position="0 0.7 -10" align="center" color="#344B43" width="5"></a-text>
+
+      <!-- 05：使用自己的 GLB 后，此实体会得到 gltf-model 和 animation-mixer。 -->
+      <a-entity id="heron" position="0 0 -7" visible="false"></a-entity>
+
+      <!-- 06：只有一个相机。rig 管位置，相机提供眼睛高度和转头。 -->
+      <a-entity id="rig" position="0 0 2" movement-controls="controls: checkpoint" checkpoint-controls="mode: teleport">
+        <a-entity id="camera" camera position="0 1.6 0" look-controls></a-entity>
+      </a-entity>
+    </a-scene>
+  </div>
+</main>
+<script>
+  // 07：以下是练习页自己的逻辑，插件不会自动生成剧情规则。
+  const scene = document.querySelector('#scene');
+  const rig = document.querySelector('#rig');
+  const bird = document.querySelector('#heron');
+  const select = document.querySelector('#clip-select');
+  const info = id => document.getElementById(id);
+  let modelURL = null;
+  let groundY = 0;
+
+  info('library-status').textContent = window.AFRAME && AFRAME.components['event-set'] && AFRAME.components['animation-mixer'] && AFRAME.components['checkpoint-controls'] ? '三个功能组件已注册。' : '脚本未完整加载。请检查 vendor 文件夹和 F12 控制台。';
+
+  document.querySelector('#clue').addEventListener('click', () => {
+    info('clue-status').textContent = '点击成功：标记出现，观察点 2 已解锁。';
+    const water = document.querySelector('#water');
+    water.classList.add('clickable');
+    water.setAttribute('color', '#5DA4B9');
+    info('move-status').textContent = '现在可以点击蓝色圆点 2。';
+  });
+
+  rig.addEventListener('navigation-end', event => {
+    const target = event.detail.checkpoint.id;
+    const names = {entry:'入口', water:'水边测试点', clearing:'最终空地测试点'};
+    info('move-status').textContent = '已到达：' + names[target];
+    if (target === 'water') {
+      const clearing = document.querySelector('#clearing');
+      clearing.classList.add('clickable');
+      clearing.setAttribute('color', '#A88CBB');
+      info('move-status').textContent += '。观察点 3 已解锁。';
+    }
+  });
+
+  info('home').addEventListener('click', () => {
+    if (!rig.components['checkpoint-controls']) return;
+    rig.components['checkpoint-controls'].setCheckpoint(document.querySelector('#entry'));
+    info('move-status').textContent = '当前位置：入口。已解锁的观察点仍可使用。';
+  });
+
+  info('model-file').addEventListener('change', event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.glb')) {
+      info('model-status').textContent = '此练习请选择 GLB。GLTF 的外部纹理和 bin 需保持文件夹关系。'; return;
+    }
+    if (modelURL) URL.revokeObjectURL(modelURL);
+    modelURL = URL.createObjectURL(file);
+    bird.removeAttribute('animation-mixer');
+    bird.removeAttribute('animation__approach');
+    bird.setAttribute('visible', false);
+    bird.setAttribute('scale', '1 1 1');
+    bird.setAttribute('position', '0 0 -7');
+    select.disabled = true;
+    ['play','stop','approach'].forEach(id => info(id).disabled = true);
+    info('model-status').textContent = '正在载入：' + file.name;
+    bird.setAttribute('gltf-model', modelURL);
+  });
+
+  bird.addEventListener('model-loaded', event => {
+    const model = event.detail.model;
+    const box = new AFRAME.THREE.Box3().setFromObject(model);
+    const size = box.getSize(new AFRAME.THREE.Vector3());
+    const scale = 1.2 / Math.max(size.x, size.y, size.z, 0.001);
+    groundY = -box.min.y * scale;
+    bird.setAttribute('scale', {x:scale,y:scale,z:scale});
+    bird.setAttribute('position', {x:0,y:groundY,z:-7});
+    bird.setAttribute('visible', true);
+    const clips = model.animations || [];
+    select.replaceChildren();
+    clips.forEach((clip, index) => {
+      const option = document.createElement('option');
+      option.value = clip.name; option.textContent = clip.name || '(未命名动画 ' + index + ')'; select.append(option);
+    });
+    info('approach').disabled = false;
+    info('clips').textContent = '动画列表：' + (clips.length ? clips.map(c => c.name).join(' / ') : '没有嵌入动画');
+    if (clips.length) {
+      select.disabled = false; info('play').disabled = false; info('stop').disabled = false;
+      info('model-status').textContent = '模型已载入。选择动作，再按“播放所选动作”。';
+    } else {
+      select.add(new Option('模型没有动画', ''));
+      info('model-status').textContent = '模型已载入，但它没有嵌入动画。可以先做整体靠近测试。';
+    }
+  });
+  bird.addEventListener('model-error', () => info('model-status').textContent = '模型加载失败。请检查文件是否为有效 GLB、是否需要外部贴图，或查看 F12 错误。');
+
+  info('play').addEventListener('click', () => bird.setAttribute('animation-mixer', {clip:select.value,loop:'repeat',crossFadeDuration:0.3,timeScale:1}));
+  info('stop').addEventListener('click', () => {
+    if (bird.components['animation-mixer']) bird.setAttribute('animation-mixer','timeScale',0);
+  });
+  info('approach').addEventListener('click', () => {
+    const p = rig.getAttribute('position');
+    bird.removeAttribute('animation__approach');
+    bird.setAttribute('animation__approach', {property:'position',to:`${p.x} ${groundY} ${p.z - 2}`,dur:1800,easing:'easeInOutQuad'});
+    info('model-status').textContent = '整个模型移动到观察点前方。内部的转头、振翅仍需要对应动画。';
+  });
+</script>
+</body>
+</html>
