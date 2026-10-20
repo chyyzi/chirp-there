@@ -977,5 +977,148 @@
       "album-selected-test.zip: 2 JPEGs; CRC, UTF-8 names, unique names, byte-for-byte originals and image decoding passed",
       "album-all-test.zip: 3 JPEGs; CRC, UTF-8 names, unique names, byte-for-byte originals and image decoding passed"
     ]
+  },
+  "handbook_lighting_20261020": {
+    "date": "2026-10-20",
+    "framework": "Three.js r173 + linkedom; actual GLB geometry; texture loading stubbed",
+    "handbook": {
+      "tabs": [
+        "controls",
+        "camera",
+        "birds",
+        "story",
+        "settings"
+      ],
+      "duplicateIds": 0,
+      "endingContentSeparated": true,
+      "clickSwitching": true
+    },
+    "world": {
+      "meshes": 1567,
+      "floors": 59,
+      "blockers": 415,
+      "materials": 258,
+      "instanceBatches": 148,
+      "savedDrawCalls": 843,
+      "shadowCasterMeshes": 1554,
+      "windMeshesWithDepth": 968,
+      "windInstanceBatches": 101
+    },
+    "environments": {
+      "normal": {
+        "sun": 3.25,
+        "fill": 0.95,
+        "exposure": 1.02,
+        "elevation": 41.979921119084004
+      },
+      "dusk": {
+        "sun": 3,
+        "fill": 0.85,
+        "exposure": 1.03,
+        "elevation": 24.044223269367816
+      },
+      "bad": {
+        "sun": 1.8,
+        "fill": 0.78,
+        "exposure": 0.98,
+        "elevation": 46.168317954176395
+      },
+      "dream": {
+        "sun": 2.85,
+        "fill": 1.12,
+        "exposure": 1.08,
+        "elevation": 39.13043285311057
+      }
+    },
+    "regression": {
+      "endingCombinations": 64,
+      "sceneUnlock": true,
+      "staleSkyGuard": true,
+      "shadowToggleAcrossEnvironments": true,
+      "stableShadowProjection": true,
+      "windShadowParity": true,
+      "materialColorsPreserved": true
+    },
+    "limitations": "No Chrome/WebGL render, GPU shader compilation, FPS or visual comparison. Texture upload and canvas drawing are simulated."
+  },
+  "terminal_feeding_shadow_20261020": {
+    "date": "2026-10-20",
+    "terminalFeeds": [
+      {
+        "species": "heron",
+        "repeatFeeds": 2,
+        "playerPosition": [
+          3,
+          1.6500000000000141,
+          -27
+        ],
+        "animationWeight": 1,
+        "stayedAtPerch": true,
+        "noAlarmOrDisappear": true
+      },
+      {
+        "species": "bulbul",
+        "repeatFeeds": 2,
+        "playerPosition": [
+          5.95,
+          1.6500000000000141,
+          -29.417564434701784
+        ],
+        "animationWeight": 1,
+        "stayedAtPerch": true,
+        "noAlarmOrDisappear": true
+      },
+      {
+        "species": "dove",
+        "repeatFeeds": 2,
+        "playerPosition": [
+          9.4,
+          1.65,
+          -34
+        ],
+        "animationWeight": 1,
+        "stayedAtPerch": true,
+        "noAlarmOrDisappear": true
+      }
+    ],
+    "checks": {
+      "doubleClickNoExtraCharge": true,
+      "consumeIdempotent": true,
+      "emptyInventory": true,
+      "cancelRefundOnce": true,
+      "modeResetCleansOffering": true,
+      "completedEndingUnchanged": true,
+      "terminalNoStoryCounters": true,
+      "blockedAndDistantAimRejected": true,
+      "blockedArcNoCharge": true,
+      "routeFleeStillWorks": true
+    },
+    "lighting": {
+      "normal": {
+        "fill": 0.6,
+        "hemi": 1.45,
+        "groundBounce": "#d9d7cb",
+        "shadowStrength": 0.78
+      },
+      "dusk": {
+        "fill": 0.48,
+        "hemi": 1.32,
+        "groundBounce": "#d4c8bb",
+        "shadowStrength": 0.72
+      },
+      "bad": {
+        "fill": 0.32,
+        "hemi": 1.2,
+        "groundBounce": "#bdc2bf",
+        "shadowStrength": 0.82
+      },
+      "dream": {
+        "fill": 0.52,
+        "hemi": 1.55,
+        "groundBounce": "#dfd9d4",
+        "shadowStrength": 0.72
+      }
+    },
+    "limitations": "Node/Three.js r173 real scene geometry and bird animations; DOM, textures and rendering mocked. No Chrome visual or FPS test."
   }
 }

@@ -1,5 +1,5 @@
 /* 鸟类状态机：idle/look/call → alert → flee/hidden；食物 → approach/eat/return。
- * 终点三只独立实例只运行 idle/call，不参与警觉、食物或路线观察计数。
+ * 终点三只：idle/call → receive/eat → idle，可反复投喂；不参与警觉与路线任务计数。
  */
 'use strict';
 AFRAME.registerComponent('chirp-birds',{
@@ -52,7 +52,8 @@ AFRAME.registerComponent('chirp-birds',{
   setState(b,state,force=false){
     if(b.state===state&&!force)return;
     b.state=state;b.stateTime=0;
-    const clipState=['approach','return'].includes(state)?'walk':state;
+    const clipState=['approach','return'].includes(state)?'walk':state==='receive'?'look':
+      b.fixed&&b.spec.id==='bulbul'&&state==='eat'?'call':state;
     b.actionDuration=b.animator?.play(clipState,{restart:force,speed:state==='flee'?1.6:1})||2;
     if(state==='call')this.call(b);
     this.el.emit('bird-state',{id:b.spec.id,state,alert:b.alert,fixed:b.fixed},false);
@@ -101,8 +102,48 @@ AFRAME.registerComponent('chirp-birds',{
     b.escapeSerial=(b.escapeSerial||0)+1;
     this.setState(b,'flee');this.call(b);window.ChirpApp?.session?.recordDisturbance(b);window.ChirpApp?.toast(b.spec.name+'受惊躲开了。放轻脚步，稍后再来。');
   },
-  setEndingVisible(visible){this.endingVisible=visible;for(const b of this.birds)if(b.fixed)b.root.visible=visible&&!!b.model;},
+  setEndingVisible(visible){
+    this.endingVisible=visible;
+    if(!visible)window.ChirpApp?.inventory?.cancelOffering();
+    for(const b of this.birds)if(b.fixed){
+      b.root.visible=visible&&!!b.model;
+      if(!visible){this.releaseFood(b);this.setState(b,'idle');b.indicator.visible=false;}
+    }
+  },
+  canAcceptOffering(b){
+    return !!(b?.fixed&&b.model&&b.root.visible&&!b.food&&b.foodTimer<=0&&['idle','call','look','friendly'].includes(b.state));
+  },
+  acceptOffering(b,food){
+    if(!this.canAcceptOffering(b))return false;
+    this.releaseFood(b);b.food=food;food.claimed=b;b.ate=false;b.path=null;
+    this.setState(b,'receive');return true;
+  },
+  tickEndingBird(b,dt,player,app){
+    // 固定鸟始终留在树枝 / 树桩 / 地面原位；冲刺、站立和反复靠近都不积累警觉。
+    b.alert=0;b.indicator.visible=false;b.label.visible=b.root.visible&&b.root.position.distanceTo(player)<17;
+    if(!b.root.visible)return;
+    b.callTimer-=dt;b.foodTimer=Math.max(0,b.foodTimer-dt);
+    if(b.food&&!b.food.active&&!b.ate){this.releaseFood(b);this.setState(b,'idle');}
+    if(b.state==='receive'){
+      if(!b.food){this.setState(b,'idle');return;}
+      if(b.food.arrived)this.setState(b,'eat');
+      return;
+    }
+    if(b.state==='eat'){
+      if(!b.ate&&b.stateTime>=b.actionDuration*.55){
+        if(!app.inventory?.consume(b.food,b)){app.inventory?.cancelOffering();this.releaseFood(b);this.setState(b,'idle');return;}
+        b.ate=true;
+        // 终点互动不回写路线投喂计数，也不改已经完成的结局。
+        app.toast(b.spec.name+'接受了浆果，安静地留在你身边。',2400);
+      }
+      if(b.stateTime>=b.actionDuration+.25){this.releaseFood(b);b.ate=false;b.foodTimer=CHIRP_CONFIG.inventory.endingFeedCooldown;this.setState(b,'idle');}
+      return;
+    }
+    if(b.state==='call'&&b.stateTime>b.actionDuration)this.setState(b,'idle');
+    if(b.state==='idle'&&b.callTimer<0){this.setState(b,'call');b.callTimer=24+Math.random()*15;}
+  },
   reset(){
+    window.ChirpApp?.inventory?.cancelOffering();
     for(const b of this.birds){this.releaseFood(b);b.path=null;b.root.position.copy(b.home);b.root.rotation.y=b.homeYaw;b.alert=0;b.calmTime=0;b.state='idle';b.stateTime=0;b.callTimer=8+Math.random()*18;b.foodTimer=1;b.lookCooldown=0;b.friendlyCooldown=0;b.walkTimer=7;this.opacity(b,1);b.animator?.reset();b.indicator.visible=false;b.root.visible=!!b.model&&(!b.fixed||this.endingVisible);}
   },
   tick(time,delta){
@@ -113,10 +154,7 @@ AFRAME.registerComponent('chirp-birds',{
     for(const b of this.birds){
       if(!b.model)continue;b.stateTime+=dt;b.animator.update(dt);
       if(b.fixed){
-        b.indicator.visible=false;b.label.visible=b.root.visible&&b.root.position.distanceTo(player)<17;
-        if(!b.root.visible)continue;b.callTimer-=dt;
-        if(b.state==='call'&&b.stateTime>b.actionDuration)this.setState(b,'idle');
-        if(b.state==='idle'&&b.callTimer<0){this.setState(b,'call');b.callTimer=24+Math.random()*15;}continue;
+        this.tickEndingBird(b,dt,player,app);continue;
       }
       const distance=Math.hypot(b.root.position.x-player.x,b.root.position.z-player.z);
       if(b.state==='hidden'){

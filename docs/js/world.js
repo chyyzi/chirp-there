@@ -36,7 +36,8 @@ AFRAME.registerComponent('chirp-world', {
       if (tree || rock || rail || floor || (/^tree-/.test(name) && foliage)) this.occluders.push(mesh);
       if (/^Deck_/.test(name)) this.deckBounds.push(new T.Box3().setFromObject(mesh));
       mesh.receiveShadow = true;
-      mesh.castShadow = tree || rock || rail || /^tree-/.test(name);
+      // 地形、灌木与草花也参与遮光；平贴的小径和水面只接收阴影，避免重叠面自遮挡。
+      mesh.castShadow = !water && !/^(Path_|PathEdge_)/.test(name);
       // 不改模型的基础颜色、贴图或粗糙度。复用数值相同的材质减少资源占用。
       const mapped = mats.map(m => {
         const key = [m.type, m.name.replace(/\.\d+$/, ''), m.color?.getHex(), m.map?.uuid,
@@ -63,7 +64,7 @@ AFRAME.registerComponent('chirp-world', {
     root.traverse(mesh=>{
       if(!mesh.isMesh||mesh.isSkinnedMesh||Array.isArray(mesh.material)||mesh.morphTargetInfluences?.length||mesh.matrixWorld.determinant()<0)return;
       if(/^waterplant-/.test(chirpOwner(mesh,root).name))return; // 荷叶保持独立浮动。
-      const key=[mesh.geometry.uuid,mesh.material.uuid,mesh.castShadow,mesh.receiveShadow].join('|');
+      const key=[mesh.geometry.uuid,mesh.material.uuid,mesh.customDepthMaterial?.uuid,mesh.castShadow,mesh.receiveShadow].join('|');
       if(!groups.has(key))groups.set(key,[]);groups.get(key).push(mesh);
     });
     const batched=new T.Group();batched.name='chirp-static-instances';
@@ -72,6 +73,7 @@ AFRAME.registerComponent('chirp-world', {
       if(list.length<3)continue;
       const first=list[0],inst=new T.InstancedMesh(first.geometry,first.material,list.length);
       inst.name='batch-'+first.name;inst.castShadow=first.castShadow;inst.receiveShadow=first.receiveShadow;
+      inst.customDepthMaterial=first.customDepthMaterial;
       list.forEach((mesh,i)=>{inst.setMatrixAt(i,mesh.matrixWorld);mesh.visible=false;});
       inst.instanceMatrix.needsUpdate=true;inst.computeBoundingSphere();batched.add(inst);
       savedDrawCalls+=list.length-1;instanceBatches++;
@@ -114,62 +116,70 @@ AFRAME.registerComponent('chirp-world', {
   },
   applyEnvironment(name) {
     const cfg=CHIRP_CONFIG.environments[name];
-    if (!cfg) return false;
-// 未完成的结局沿用普通结局灯光，同时允许单独设置天空。
-const env = {
-  ...(CHIRP_CONFIG.environments[cfg.inherit || 'normal'] || {}),
-  ...cfg
-};
-    const scene=this.el.sceneEl,T=AFRAME.THREE;
-// 切换时先显示备用底色，并释放上一张天空贴图。
-const previousBackground = scene.object3D.background;
-scene.object3D.background = new T.Color(env.sky);
-
-if (previousBackground?.isTexture) {
-  previousBackground.dispose();
-}
-
-// 防止快速切换结局时，旧图片覆盖新图片。
-const requestId = (this.skyRequestId || 0) + 1;
-this.skyRequestId = requestId;
-
-if (env.skyTexture) {
-  new T.TextureLoader().load(
-    env.skyTexture,
-    texture => {
-      if (requestId !== this.skyRequestId) {
-        texture.dispose();
-        return;
-      }
-
-      texture.colorSpace = T.SRGBColorSpace;
-      texture.mapping = T.EquirectangularReflectionMapping;
-      scene.object3D.background = texture;
-    },
-    undefined,
-    error => {
-      console.warn('天空图片加载失败：', env.skyTexture, error);
-    }
-  );
-}
+    if(!cfg)return false;
+    const env={...(CHIRP_CONFIG.environments[cfg.inherit||'normal']||{}),...cfg};
+    const scene=this.el.sceneEl,T=AFRAME.THREE,settings=CHIRP_CONFIG.scene;
+    const previousBackground=scene.object3D.background;
+    scene.object3D.background=new T.Color(env.sky);
+    if(previousBackground?.isTexture)previousBackground.dispose();
+    // 连续切景时，过期天空只释放，不覆盖新场景。
+    const requestId=this.skyRequestId=(this.skyRequestId||0)+1;
+    if(env.skyTexture)new T.TextureLoader().load(env.skyTexture,texture=>{
+      if(requestId!==this.skyRequestId){texture.dispose();return;}
+      texture.colorSpace=T.SRGBColorSpace;texture.mapping=T.EquirectangularReflectionMapping;
+      scene.object3D.background=texture;
+    },undefined,error=>console.warn('天空图片加载失败：',env.skyTexture,error));
     scene.object3D.fog=new T.Fog(env.fog,env.fogNear,env.fogFar);
-    if (!this.lights) {
-      const hemi=new T.HemisphereLight(env.hemiSky,env.hemiGround,env.hemiIntensity);
-      const sun=new T.DirectionalLight(env.sun,env.sunIntensity);
-      sun.position.set(-30,65,30);sun.target.position.set(0,0,0);
-      sun.castShadow=CHIRP_CONFIG.scene.shadows;
-      sun.shadow.mapSize.set(CHIRP_CONFIG.scene.shadowSize,CHIRP_CONFIG.scene.shadowSize);
-      Object.assign(sun.shadow.camera,{left:-35,right:35,top:35,bottom:-35,near:1,far:150});
-      sun.shadow.bias=-.0003;sun.shadow.normalBias=.035;sun.shadow.radius=3;
-      scene.object3D.add(hemi,sun,sun.target);this.lights={hemi,sun};
+    if(!this.lights){
+      const hemi=new T.HemisphereLight(),sun=new T.DirectionalLight(),fill=new T.DirectionalLight();
+      fill.castShadow=false; // 侧向天空反弹光，提亮暗面但不增加第二张阴影贴图。
+      sun.castShadow=settings.shadows;
+      const size=Math.min(settings.shadowSize,scene.renderer?.capabilities?.maxTextureSize||settings.shadowSize);
+      sun.shadow.mapSize.set(size,size);
+      const radius=settings.shadowRadius||42,distance=settings.shadowDistance||90;
+      Object.assign(sun.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius,near:1,far:distance*2});
+      sun.shadow.camera.updateProjectionMatrix();
+      sun.shadow.bias=settings.shadowBias??-.00012;
+      sun.shadow.normalBias=settings.shadowNormalBias??.025;
+      scene.object3D.add(hemi,sun,sun.target,fill,fill.target);this.lights={hemi,sun,fill};
+      this.shadowCenter=new T.Vector3();this.sunOffset=new T.Vector3();
+      this.shadowRight=new T.Vector3();this.shadowUp=new T.Vector3();
     }
-    this.lights.hemi.color.set(env.hemiSky);this.lights.hemi.groundColor.set(env.hemiGround);this.lights.hemi.intensity=env.hemiIntensity;
-    this.lights.sun.color.set(env.sun);this.lights.sun.intensity=env.sunIntensity;
-    if(scene.renderer){scene.renderer.toneMapping=T.ACESFilmicToneMapping;scene.renderer.toneMappingExposure=env.exposure;scene.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,CHIRP_CONFIG.scene.pixelRatio));}
+    const {hemi,sun,fill}=this.lights;
+    hemi.color.set(env.hemiSky);hemi.groundColor.set(env.hemiGround);hemi.intensity=env.hemiIntensity;
+    sun.color.set(env.sun);sun.intensity=env.sunIntensity;
+    sun.shadow.intensity=Math.max(0,Math.min(1,env.shadowStrength??1));
+    fill.color.set(env.fill||env.hemiSky);fill.intensity=env.fillIntensity??0;
+    fill.position.fromArray(env.fillDirection||[38,24,-42]);fill.target.position.set(0,0,0);
+    this.sunOffset.fromArray(env.sunDirection||[-48,50,28]).normalize().multiplyScalar(settings.shadowDistance||90);
+    // 固定光线方向，只有阴影覆盖区跟随玩家；切景不会重复添加灯光。
+    this.shadowRight.set(0,1,0).cross(this.sunOffset).normalize();
+    this.shadowUp.crossVectors(this.sunOffset,this.shadowRight).normalize();
+    this.updateShadowCenter();
+    if(scene.renderer){
+      scene.renderer.shadowMap.enabled=true;scene.renderer.shadowMap.type=T.PCFSoftShadowMap;
+      scene.renderer.toneMapping=T.ACESFilmicToneMapping;scene.renderer.toneMappingExposure=env.exposure;
+      scene.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,settings.pixelRatio));
+    }
     this.currentFilter=env.filter||'none';if(scene.canvas)scene.canvas.style.filter=this.currentFilter;
     this.setupDreamParticles();this.dreamParticles.visible=name==='dream';
-    this.environment=name;
-    return cfg.ready;
+    this.environment=name;return cfg.ready;
+  },
+  updateShadowCenter(){
+    if(!this.lights)return;
+    const player=window.ChirpApp?.player?.el.object3D.position;
+    const spawn=CHIRP_CONFIG.player.spawn,center=this.shadowCenter,sun=this.lights.sun;
+    center.set(player?.x??spawn.x,(player?.y??0)+4,player?.z??spawn.z);
+    // 在光源平面中按阴影纹素对齐，替换原来每 180ms、每 3m 跳一次的世界坐标取整。
+    // 同时移动光源和目标，避免跟随移动改变日光方向或造成树影游动。
+    const camera=sun.shadow.camera;
+    const texelX=(camera.right-camera.left)/sun.shadow.mapSize.x;
+    const texelY=(camera.top-camera.bottom)/sun.shadow.mapSize.y;
+    const x=center.dot(this.shadowRight),y=center.dot(this.shadowUp);
+    center.addScaledVector(this.shadowRight,Math.round(x/texelX)*texelX-x);
+    center.addScaledVector(this.shadowUp,Math.round(y/texelY)*texelY-y);
+    sun.target.position.copy(center);sun.position.copy(center).add(this.sunOffset);
+    sun.target.updateMatrixWorld();sun.updateMatrixWorld();
   },
   setupDreamParticles(){
     if(this.dreamParticles)return;
@@ -182,11 +192,6 @@ if (env.skyTexture) {
   tick(time) {
     if(this.dreamParticles?.visible){const a=this.dreamParticles.geometry.attributes.position;for(let i=0;i<a.count;i++){a.setY(i,this.particleBase[i*3+1]+Math.sin(time*.0004+i)*.35);a.setX(i,this.particleBase[i*3]+Math.sin(time*.00025+i)*.3);}a.needsUpdate=true;}
 
-    if(!this.lights || !window.ChirpApp?.player)return;
-    if(time-(this.lastShadowUpdate||0)<180)return;
-    this.lastShadowUpdate=time;
-    const p=ChirpApp.player.el.object3D.position,s=this.lights.sun;
-    const x=Math.round(p.x/3)*3,z=Math.round(p.z/3)*3;
-    s.position.set(x-30,65,z+30);s.target.position.set(x,0,z);s.target.updateMatrixWorld();
+    if(this.lights?.sun.castShadow)this.updateShadowCenter();
   }
 });

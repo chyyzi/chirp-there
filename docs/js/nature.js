@@ -3,7 +3,7 @@ AFRAME.registerComponent('gentle-nature', {
   schema: {enabled:{default:true}, strength:{default:1}},
   init: function() {
     this.time={value:0}; this.strength={value:1}; this.elapsed=0;
-    this.originals=[]; this.materials=new Map(); this.geometries=new Map(); this.floaters=[];
+    this.originals=[]; this.materials=new Map(); this.depthMaterials=new Map(); this.geometries=new Map(); this.floaters=[];
     this.loaded=()=>this.setup();
     this.el.addEventListener('model-loaded',this.loaded);
     if(this.el.getObject3D('mesh')) this.setup();
@@ -38,6 +38,26 @@ AFRAME.registerComponent('gentle-nature', {
       let material=this.materials.get(mkey);
       if(!material) {
         material=originalMaterial.clone();
+        this.bindWind(material,kind);
+        material.userData.chirpWindKind=kind;
+        this.materials.set(mkey,material);
+      }
+      // 深度通道用同一套风与权重：树叶/灌木移动时，投影同步移动。
+      let depth=this.depthMaterials.get(kind);
+      if(!depth){
+        depth=new AFRAME.THREE.MeshDepthMaterial({depthPacking:AFRAME.THREE.RGBADepthPacking});
+        this.bindWind(depth,kind);this.depthMaterials.set(kind,depth);
+      }
+      this.originals.push({mesh,geometry:originalGeometry,material:originalMaterial,depth:mesh.customDepthMaterial});
+      mesh.geometry=geometry;mesh.material=material;mesh.customDepthMaterial=depth;
+    });
+    root.children.forEach((obj,i)=>{
+      if(!/^waterplant-/.test(obj.name))return;
+      this.floaters.push({obj,position:obj.position.clone(),rotation:obj.rotation.clone(),phase:i*2.39996});
+    });
+    this.counts={windMeshes:this.originals.length,waterPlants:this.floaters.length};
+  },
+  bindWind: function(material,kind){
         const amplitude=kind==='leaf'?.07:kind==='bush'?.055:.045;
         material.onBeforeCompile=shader=>{
           shader.uniforms.chirpTime=this.time;shader.uniforms.chirpStrength=this.strength;
@@ -56,18 +76,7 @@ AFRAME.registerComponent('gentle-nature', {
             transformed.z+=sin(chirpTime*1.1+chirpPhase+.9)*chirpAmplitude*.48*chirpStrength*chirpWindWeight/max(.001,chirpScale.z);
           `);
         };
-        material.userData.chirpWindKind=kind;
-        material.customProgramCacheKey=()=> 'chirp-gentle-wind-v2-'+kind;
-        this.materials.set(mkey,material);
-      }
-      this.originals.push({mesh,geometry:originalGeometry,material:originalMaterial});
-      mesh.geometry=geometry;mesh.material=material;
-    });
-    root.children.forEach((obj,i)=>{
-      if(!/^waterplant-/.test(obj.name))return;
-      this.floaters.push({obj,position:obj.position.clone(),rotation:obj.rotation.clone(),phase:i*2.39996});
-    });
-    this.counts={windMeshes:this.originals.length,waterPlants:this.floaters.length};
+        material.customProgramCacheKey=()=> 'chirp-gentle-wind-v3-'+kind;
   },
   tick: function(time,delta) {
     if(!delta)return;
@@ -82,11 +91,12 @@ AFRAME.registerComponent('gentle-nature', {
     }
   },
   restore: function() {
-    for(const x of this.originals){x.mesh.geometry=x.geometry;x.mesh.material=x.material;}
+    for(const x of this.originals){x.mesh.geometry=x.geometry;x.mesh.material=x.material;x.mesh.customDepthMaterial=x.depth;}
     for(const f of this.floaters){f.obj.position.copy(f.position);f.obj.rotation.copy(f.rotation);}
     for(const m of this.materials.values())m.dispose();
+    for(const m of this.depthMaterials.values())m.dispose();
     for(const g of this.geometries.values())g.dispose();
-    this.originals=[];this.floaters=[];this.materials.clear();this.geometries.clear();
+    this.originals=[];this.floaters=[];this.materials.clear();this.depthMaterials.clear();this.geometries.clear();
   },
   remove: function(){this.el.removeEventListener('model-loaded',this.loaded);this.restore();}
 });

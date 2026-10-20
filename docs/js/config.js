@@ -1,18 +1,25 @@
 /* 《啾，在那里！》集中调参。修改并保存后刷新页面。
  * audio：默认音量 0～1，浏览器保存的滑杆优先；手册点「恢复音量设置」读回这里。
  * environments：normal=天空1常态，dusk=天空2普通结局，bad=天空3，dream=天空4。
+ * 光照：sunIntensity=日光；hemiIntensity=阴影补光；sunDirection=[X,Y,Z]，Y 越低光线越斜。
+ * 暗部：hemiGround=地面反弹光；fillIntensity=侧向补光；shadowStrength=投影浓度（0～1）。
+ * 阴影：scene.shadowRadius=覆盖半径；shadowSize=贴图尺寸；默认只用一盏投影灯。
  * birds.species：路线鸟位置 / modelHeight（自动等比缩放）/ 模型、叫声、动作映射。
  * endingPerches：独立的终点三鸟；y 是树枝/树桩表面绝对高度。
  * inventory：数量、拾取距离、静止等待秒数；story：观察秒数、终点中心和触发半径。
  * 坐标是网页坐标：X=Blender X，Y=Blender Z，Z=-Blender Y。
  */
 window.CHIRP_CONFIG = {
-  "version": "2026.10.19-final",
+  "version": "2026.10.20-feeding-light",
   "scene": {
     "model": "assets/model/forest-final.glb",
     "pixelRatio": 1.5,
     "shadows": true,
-    "shadowSize": 2048
+    "shadowSize": 2048,
+    "shadowRadius": 42,
+    "shadowDistance": 90,
+    "shadowBias": -0.00025,
+    "shadowNormalBias": 0.035
   },
   "player": {
     "spawn": {
@@ -189,61 +196,98 @@ window.CHIRP_CONFIG = {
       "ready": true,
       "skyTexture": "assets/images/sky1.png",
       "sky": "#d6e7e2",
-      "fog": "#d6e7e2",
-      "fogNear": 55,
-      "fogFar": 180,
-      "sun": "#fff1d4",
-      "sunIntensity": 2,
-      "hemiSky": "#ddecf0",
-      "hemiGround": "#9caa79",
-      "hemiIntensity": 1.65,
-      "exposure": 1.1,
-      "filter": "none"
+      "fog": "#cbdcd9",
+      "fogNear": 48,
+      "fogFar": 175,
+      "sun": "#fff0ce",
+      "sunIntensity": 2.85,
+      "hemiSky": "#deedf5",
+      "hemiGround": "#d9d7cb",
+      "hemiIntensity": 1.45,
+      "exposure": 1.08,
+      "filter": "none",
+      "sunDirection": [
+        -48,
+        50,
+        28
+      ],
+      "shadowStrength": 0.78,
+      "fill": "#dce7ed",
+      "fillIntensity": 0.6,
+      "fillDirection": [
+        38,
+        24,
+        -42
+      ]
     },
     "dusk": {
       "ready": true,
       "inherit": "normal",
       "skyTexture": "assets/images/sky2.png",
-      "fog": "#d9b18d",
-      "fogNear": 35,
-      "fogFar": 145,
-      "sun": "#ffb46d",
-      "sunIntensity": 1.8,
-      "hemiSky": "#d9bec8",
-      "hemiGround": "#967653",
-      "hemiIntensity": 1.2,
-      "exposure": 1.02,
-      "filter": "sepia(0.12) saturate(1.08)"
+      "fog": "#d6b99b",
+      "fogNear": 40,
+      "fogFar": 155,
+      "sun": "#ffc087",
+      "sunIntensity": 2.8,
+      "hemiSky": "#d6e0ed",
+      "hemiGround": "#d4c8bb",
+      "hemiIntensity": 1.32,
+      "exposure": 1.08,
+      "filter": "sepia(0.06) saturate(1.04)",
+      "sunDirection": [
+        -60,
+        29,
+        25
+      ],
+      "shadowStrength": 0.72,
+      "fill": "#d3dceb",
+      "fillIntensity": 0.48
     },
     "bad": {
       "ready": true,
       "inherit": "normal",
       "skyTexture": "assets/images/sky3.png",
       "fog": "#8b9297",
-      "fogNear": 28,
-      "fogFar": 125,
+      "fogNear": 34,
+      "fogFar": 135,
       "sun": "#d4dbe1",
-      "sunIntensity": 1.05,
-      "hemiSky": "#a7b0b7",
-      "hemiGround": "#727775",
-      "hemiIntensity": 1.15,
-      "exposure": 0.9,
-      "filter": "grayscale(1) contrast(1.08)"
+      "sunIntensity": 1.7,
+      "hemiSky": "#ccd5de",
+      "hemiGround": "#bdc2bf",
+      "hemiIntensity": 1.2,
+      "exposure": 1.03,
+      "filter": "grayscale(1) contrast(1.04)",
+      "sunDirection": [
+        -42,
+        55,
+        32
+      ],
+      "shadowStrength": 0.82,
+      "fill": "#c9d2da",
+      "fillIntensity": 0.32
     },
     "dream": {
       "ready": true,
       "inherit": "normal",
       "skyTexture": "assets/images/sky4.png",
-      "fog": "#d9cce5",
-      "fogNear": 32,
-      "fogFar": 155,
-      "sun": "#ffe0ee",
-      "sunIntensity": 1.7,
-      "hemiSky": "#d9dcff",
-      "hemiGround": "#a7baaa",
-      "hemiIntensity": 1.9,
-      "exposure": 1.16,
-      "filter": "saturate(1.12) contrast(0.94) brightness(1.04)"
+      "fog": "#d5cde4",
+      "fogNear": 42,
+      "fogFar": 165,
+      "sun": "#ffe5d6",
+      "sunIntensity": 2.65,
+      "hemiSky": "#e6dffb",
+      "hemiGround": "#dfd9d4",
+      "hemiIntensity": 1.55,
+      "exposure": 1.1,
+      "filter": "saturate(1.06)",
+      "sunDirection": [
+        -45,
+        44,
+        30
+      ],
+      "shadowStrength": 0.72,
+      "fill": "#e0e4f4",
+      "fillIntensity": 0.52
     }
   },
   "inventory": {
@@ -256,7 +300,11 @@ window.CHIRP_CONFIG = {
     "handWaitSeconds": 3,
     "foodLifetime": 90,
     "maxGroundFood": 8,
-    "birdSpeed": 0.8
+    "birdSpeed": 0.8,
+    "endingFeedDistance": 8,
+    "endingFeedAimAngle": 0.1,
+    "endingFeedCooldown": 2.5,
+    "endingFeedFlightSeconds": 0.85
   },
   "story": {
     "observeSeconds": 3,

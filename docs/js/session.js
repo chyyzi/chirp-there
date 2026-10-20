@@ -88,7 +88,7 @@ class ChirpSession {
       const newlyUnlocked=!this.unlockedEndings.has(name);this.unlockedEndings.add(name);
       const saved=ChirpStore.writeJSON('chirp-endings-v1',[...this.unlockedEndings]);this.updateUI();
       if(!saved)this.app.toast('结局已完成，但浏览器未能保存收藏；关闭页面后可能丢失。',6000);
-      else if(newlyUnlocked)this.app.toast(this.allEndingsUnlocked()?'三个结局已集齐！观察模式现可在手册设置中切换场景。':'已收藏 '+this.endingNames[name]+'（'+this.unlockedEndings.size+'/3）',5500);
+      else if(newlyUnlocked)this.app.toast(this.allEndingsUnlocked()?'三个结局已集齐！观察模式现可在手册「故事与结局」中切换场景。':'已收藏 '+this.endingNames[name]+'（'+this.unlockedEndings.size+'/3）',5500);
     },CHIRP_CONFIG.story.transitionSeconds*500);
     this.updateUI();return true;
   }
