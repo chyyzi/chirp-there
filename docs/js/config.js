@@ -10,7 +10,7 @@
  * 坐标是网页坐标：X=Blender X，Y=Blender Z，Z=-Blender Y。
  */
 window.CHIRP_CONFIG = {
-  "version": "2026.10.20-feeding-light",
+  "version": "20261021-recovery",
   "scene": {
     "model": "assets/model/forest-final.glb",
     "pixelRatio": 1.5,

@@ -172,7 +172,7 @@ class ChirpApplication {
     // Ctrl 为轻按切换；浏览器保留的 Ctrl+W 无法保证拦截，另提供 X 同功能。
     if(!this.hasControl()&&e.ctrlKey)return;
     if(e.code==='KeyU'&&!e.ctrlKey&&!e.repeat){e.preventDefault();this.toggleInterface();return;}
-    if(['KeyH','KeyP','KeyF','KeyC','KeyE','KeyR','KeyG'].includes(e.code)&&!e.repeat){
+    if(['KeyH','KeyP','KeyF','KeyC','KeyE','KeyR','KeyG','KeyB'].includes(e.code)&&!e.repeat){
       e.preventDefault();
       if(e.code==='KeyF'){this.toggleFullscreen();return;}
       if(!this.started)return;
@@ -181,6 +181,7 @@ class ChirpApplication {
       if(e.code==='KeyC'){this.toggleCamera();return;}
       if(e.code==='KeyE'&&this.hasControl()){this.cameraMode?this.takePhoto():this.inventory?.toggleHand();return;}
       if(e.code==='KeyG'&&this.hasControl()){this.session.openEnding();return;}
+      if(e.code==='KeyB'&&this.hasControl()){this.player.unstuck();return;}
       if(e.code==='KeyR'&&this.hasControl()){this.inventory?.cancelHand();this.player.reset();this.toast('回到入口；本轮进度保留。重新开始请在手册中选择。');return;}
     }
 if (!this.hasControl()) return;

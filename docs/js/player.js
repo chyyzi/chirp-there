@@ -24,6 +24,41 @@ AFRAME.registerComponent('chirp-player', {
     this.camera.object3D.position.y=cfg.eyeHeight;
     this.crouching=false;
   },
+  safeRescuePoint(x,z,upper,referenceY){
+    const cfg=CHIRP_CONFIG.player,y=this.world.floorAt(x,z,upper),radius=cfg.radius+.12;
+    if(y===null||Math.abs(y+.03-referenceY)>cfg.maxDrop)return null;
+    if(this.world.collisionAt(x,y+.03,z,cfg.height,radius))return null;
+    // 检查整圈落脚空间，避开岸边、狭缝和陡坎。
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4,edge=this.world.floorAt(x+Math.cos(a)*radius,z+Math.sin(a)*radius,y+cfg.stepHeight+.04);
+      if(edge===null||Math.abs(edge-y)>cfg.stepHeight)return null;
+    }
+    return new AFRAME.THREE.Vector3(x,y+.03,z);
+  },
+  unstuck(){
+    if(!this.ready)return false;
+    const p=this.el.object3D.position,cfg=CHIRP_CONFIG.player,app=window.ChirpApp;
+    let chosen=null,fallback=false;
+    // 只在按 B 时搜索附近落脚点，日常移动不会突然回弹。
+    for(let ring=1;ring<=12&&!chosen;ring++)for(let i=0;i<24;i++){
+      const a=i*Math.PI/12;
+      chosen=this.safeRescuePoint(p.x+Math.cos(a)*ring*.5,p.z+Math.sin(a)*ring*.5,p.y+cfg.stepHeight+.04,p.y);
+      if(chosen)break;
+    }
+    if(!chosen){
+      fallback=true;const base=cfg.spawn,ground=this.world.floorAt(base.x,base.z);
+      if(ground!==null)for(let ring=0;ring<12&&!chosen;ring++)for(let i=0;i<(ring?24:1);i++){
+        const a=i*Math.PI/12;
+        chosen=this.safeRescuePoint(base.x+Math.cos(a)*ring*.5,base.z+Math.sin(a)*ring*.5,ground+cfg.stepHeight+.04,ground+.03);
+        if(chosen)break;
+      }
+    }
+    if(!chosen){app?.toast('暂时未找到安全落脚点，位置和进度已保留。');return false;}
+    app?.inventory?.cancelHand();app?.inventory?.cancelOffering();
+    p.copy(chosen);this.clear();this.velocityY=0;this.grounded=true;this.crouching=false;this.mode='walk';
+    this.camera.object3D.position.y=cfg.eyeHeight;
+    app?.toast(fallback?'附近没有安全位置，已回到入口；物品和本轮进度保留。':'已移到附近安全位置；物品和本轮进度保留。');return true;
+  },
   toggleCrouch() {
   if (!this.ready) return;
 

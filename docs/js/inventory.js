@@ -49,10 +49,12 @@ class ChirpInventory {
   aim(){
     const T=AFRAME.THREE,camera=this.app.camera;camera.updateMatrixWorld(true);
     const ray=new T.Raycaster();ray.setFromCamera(new T.Vector2(0,0),camera);ray.far=CHIRP_CONFIG.inventory.pickupDistance;
-    // 选中浆果时，终点鸟具有明确的瞄准投喂入口；相机拍照走独立入口。
+    // 近处浆果优先拾取，避免后方终点鸟抢走点击；相机拍照走独立入口。
+    const candidates=[...this.pickups,...this.foods.filter(x=>x.active)];
+    this.root.updateMatrixWorld(true);
+    const hits=ray.intersectObjects(candidates.map(x=>x.mesh),true);
+    if(hits.length){let o=hits[0].object;while(o.parent&&o.parent!==this.root)o=o.parent;const item=candidates.find(x=>x.mesh===o);if(item&&this.app.birdSystem.lineOfSight(ray.ray.origin,item.position.clone().add(new T.Vector3(0,.15,0))))return {kind:'pickup',item};}
     if(this.selected===1){const bird=this.endingTarget(ray.ray);if(bird)return {kind:'ending-bird',bird};}
-    const hits=ray.intersectObjects(this.pickups.map(x=>x.mesh),true);
-    if(hits.length){let o=hits[0].object;while(o.parent&&o.parent!==this.root)o=o.parent;const item=this.pickups.find(x=>x.mesh===o);if(item&&this.app.birdSystem.lineOfSight(ray.ray.origin,item.position.clone().add(new T.Vector3(0,.15,0))))return {kind:'pickup',item};}
     return {kind:'empty',ray:ray.ray};
   }
   endingTarget(ray){
@@ -107,12 +109,23 @@ class ChirpInventory {
     if(refund&&!food.consumed)this.berries=Math.min(CHIRP_CONFIG.inventory.maxBerries,this.berries+1);
     this.render();
   }
+  recover(item){
+    // 已吃掉、过期或已拾取的对象不可再次兑换物品。
+    if(!item||item.active===false||(!this.pickups.includes(item)&&!this.foods.includes(item)))return false;
+    if(this.berries>=CHIRP_CONFIG.inventory.maxBerries){this.app.toast('浆果袋已经满了。');return false;}
+    item.active=false;
+    const bird=item.claimed;
+    if(bird?.food===item)this.app.birdSystem.goHome(bird);
+    item.claimed=null;
+    this.root.remove(item.mesh);
+    this.pickups=this.pickups.filter(x=>x!==item);this.foods=this.foods.filter(x=>x!==item);
+    this.berries++;this.render();this.app.toast(item.kind==='ground'?'收回浆果 +1':'拾取浆果 +1',1400);return true;
+  }
   primary(){
     if(this.clock-this.lastAction<.3)return;this.lastAction=this.clock;
     const target=this.aim();
     if(target.kind==='pickup'){
-      if(this.berries>=CHIRP_CONFIG.inventory.maxBerries){this.app.toast('浆果袋已经满了。');return;}
-      this.root.remove(target.item.mesh);this.pickups=this.pickups.filter(x=>x!==target.item);this.berries++;this.render();this.app.toast('拾取浆果 +1',1400);return;
+      this.recover(target.item);return;
     }
     if(this.selected!==1)return;
     if(target.kind==='ending-bird'){this.offerTo(target.bird);return;}
@@ -183,7 +196,7 @@ class ChirpInventory {
     if(this.hand)return this.hand.wait<wait?'安静等待 '+Math.max(0,wait-this.hand.wait).toFixed(1)+' 秒 · 移动取消':'正在等待鸟类靠近 · 移动取消';
     const aim=this.aim();
     if(aim.kind==='ending-bird')return this.app.birdSystem.canAcceptOffering(aim.bird)?'左键 · 投喂终点的'+aim.bird.spec.name:'它正在回应你 · 稍后可再次投喂';
-    if(aim.kind==='pickup')return '左键 · 拾取浆果';
+    if(aim.kind==='pickup')return aim.item.kind==='ground'?'左键 · 收回浆果':'左键 · 拾取浆果';
     return this.selected===1?'左键 放到近处地面 · E 蹲下伸手等待':this.selected===0?'C 举起相机 · 左键拾取浆果':'左键拾取浆果 · 1–4 切换物品';
   }
 }
