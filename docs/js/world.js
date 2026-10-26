@@ -3,10 +3,10 @@ AFRAME.registerComponent('chirp-world', {
   init() {
     this.ready = false;
     this.el.addEventListener('model-loaded', () => {
-      window.dispatchEvent(new CustomEvent('chirp-loading', {detail: '场景已载入，正在整理地形…'}));
-      setTimeout(() => { try { this.build(); } catch (e) { console.error(e); window.dispatchEvent(new CustomEvent('chirp-error', {detail: '场景初始化失败，请查看控制台。'})); } }, 30);
+      window.dispatchEvent(new CustomEvent('chirp-loading', {detail: '正在准备林间小路…'}));
+      setTimeout(() => { try { this.build(); } catch (e) { console.error(e); window.dispatchEvent(new CustomEvent('chirp-error', {detail: '场景加载失败，请刷新重试。'})); } }, 30);
     });
-    this.el.addEventListener('model-error', () => window.dispatchEvent(new CustomEvent('chirp-error', {detail: '模型没有载入。请用 Live Server 打开项目根目录的 index.html。'})));
+    this.el.addEventListener('model-error', () => window.dispatchEvent(new CustomEvent('chirp-error', {detail: '场景未能加载，请检查网络后刷新。'})));
   },
   build() {
     const T = AFRAME.THREE, root = this.el.getObject3D('mesh');
@@ -38,7 +38,7 @@ AFRAME.registerComponent('chirp-world', {
       mesh.receiveShadow = true;
       // 地形、灌木与草花也参与遮光；平贴的小径和水面只接收阴影，避免重叠面自遮挡。
       mesh.castShadow = !water && !/^(Path_|PathEdge_)/.test(name);
-      // 不改模型的基础颜色、贴图或粗糙度。复用数值相同的材质减少资源占用。
+      // 合并参数相同的材质。
       const mapped = mats.map(m => {
         const key = [m.type, m.name.replace(/\.\d+$/, ''), m.color?.getHex(), m.map?.uuid,
           m.roughness, m.roughnessMap?.uuid, m.metalness, m.metalnessMap?.uuid, m.opacity,
@@ -152,7 +152,7 @@ AFRAME.registerComponent('chirp-world', {
     fill.color.set(env.fill||env.hemiSky);fill.intensity=env.fillIntensity??0;
     fill.position.fromArray(env.fillDirection||[38,24,-42]);fill.target.position.set(0,0,0);
     this.sunOffset.fromArray(env.sunDirection||[-48,50,28]).normalize().multiplyScalar(settings.shadowDistance||90);
-    // 固定光线方向，只有阴影覆盖区跟随玩家；切景不会重复添加灯光。
+    // 固定光线方向，阴影覆盖区跟随玩家。
     this.shadowRight.set(0,1,0).cross(this.sunOffset).normalize();
     this.shadowUp.crossVectors(this.sunOffset,this.shadowRight).normalize();
     this.updateShadowCenter();

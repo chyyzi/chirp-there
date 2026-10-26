@@ -149,7 +149,7 @@ class ChirpInventory {
     const target=this.nav.point(p.x-Math.sin(yaw)*.9,p.z-Math.cos(yaw)*.9,p.y+.4);
     if(!target||!this.nav.segment(p,target)){this.app.toast('面前有障碍，请换一块空地再伸手。');return;}
     this.app.player.clear();this.hand={id:'hand',kind:'hand',position:target,origin:p.clone(),wait:0,active:true,claimed:null};
-    this.app.toast('保持蹲下静止 '+CHIRP_CONFIG.inventory.handWaitSeconds+' 秒；转头可以，移动或切换物品会收回食物。',4500);
+    this.app.toast('静止等待 '+CHIRP_CONFIG.inventory.handWaitSeconds+' 秒，移动或切换物品可取消。',4500);
   }
   cancelHand(){if(this.hand)this.hand.active=false;this.hand=null;}
   availableFood(bird){

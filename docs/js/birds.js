@@ -28,7 +28,7 @@ AFRAME.registerComponent('chirp-birds',{
     const loaded=await Promise.allSettled(jobs);this.ready=true;
     this.setEndingVisible(window.ChirpApp?.session?.mode==='observe');
     const failures=loaded.filter(x=>x.status==='rejected');
-    if(failures.length)window.dispatchEvent(new CustomEvent('chirp-error',{detail:'部分鸟类模型加载失败，请检查 assets/model/birds，刷新重试。'}));
+    if(failures.length)window.dispatchEvent(new CustomEvent('chirp-error',{detail:'部分鸟类未能加载，请刷新重试。'}));
     window.dispatchEvent(new CustomEvent('chirp-birds-ready',{detail:{ok:!failures.length,count:this.birds.length}}));
   },
   label(text,alert=false){

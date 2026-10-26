@@ -18,7 +18,7 @@ AFRAME.registerComponent('chirp-player', {
       const y=this.world.floorAt(x,z);
       if(y!==null&&!this.world.collisionAt(x,y+.03,z)){chosen={x,y:y+.03,z};break;}
     }
-    if(!chosen){window.dispatchEvent(new CustomEvent('chirp-error',{detail:'入口无法站立，请检查 config.js 的 spawn。'}));return;}
+    if(!chosen){console.error('入口没有可用落脚点：',CHIRP_CONFIG.player.spawn);window.dispatchEvent(new CustomEvent('chirp-error',{detail:'入口加载异常，请刷新重试。'}));return;}
     this.el.object3D.position.set(chosen.x,chosen.y,chosen.z);this.velocityY=0;this.grounded=true;this.clear();
     this.camera.object3D.rotation.set(0,base.yaw,0,'YXZ');
     this.camera.object3D.position.y=cfg.eyeHeight;
@@ -53,11 +53,11 @@ AFRAME.registerComponent('chirp-player', {
         if(chosen)break;
       }
     }
-    if(!chosen){app?.toast('暂时未找到安全落脚点，位置和进度已保留。');return false;}
+    if(!chosen){app?.toast('附近没有落脚点，请按 R 返回入口。');return false;}
     app?.inventory?.cancelHand();app?.inventory?.cancelOffering();
     p.copy(chosen);this.clear();this.velocityY=0;this.grounded=true;this.crouching=false;this.mode='walk';
     this.camera.object3D.position.y=cfg.eyeHeight;
-    app?.toast(fallback?'附近没有安全位置，已回到入口；物品和本轮进度保留。':'已移到附近安全位置；物品和本轮进度保留。');return true;
+    app?.toast(fallback?'已返回入口。':'已移到附近空地。');return true;
   },
   toggleCrouch() {
   if (!this.ready) return;

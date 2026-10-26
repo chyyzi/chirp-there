@@ -37,7 +37,7 @@ class ChirpAudio {
     jobs.push(...CHIRP_CONFIG.birds.species.filter(s=>s.call).map(s=>this.buffer(s.call)));
     jobs.push(...[...CHIRP_CONFIG.audio.grassSteps,...CHIRP_CONFIG.audio.woodSteps].map(f=>this.buffer('assets/audio/'+f)));
     const results=await Promise.allSettled(jobs);
-    if(results.some(r=>r.status==='rejected')){console.warn('部分音频未加载',results.filter(r=>r.status==='rejected'));window.ChirpApp?.toast('部分声音加载失败，其他功能可以继续使用。');}
+    if(results.some(r=>r.status==='rejected')){console.warn('部分音频未加载',results.filter(r=>r.status==='rejected'));window.ChirpApp?.toast('部分声音未加载，请检查网络后重试。');}
   }
   set(key,value){this.values[key]=ChirpCore.clamp(Number(value),0,1);this.apply();ChirpStore.writeJSON('chirp-volumes',this.values);}
   reset(){for(const key of Object.keys(this.values))this.values[key]=CHIRP_CONFIG.audio[key];ChirpStore.remove('chirp-volumes');this.apply();}
